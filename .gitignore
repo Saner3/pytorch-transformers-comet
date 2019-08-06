@@ -1,12 +1,5 @@
-comet-commonsense/models
-comet-commonsense/results
-comet-commonsense/logs
-comet-commonsense/data
-comet-commonsense/model
-pytorch-transformers/logs
-pytorch-transformers/models
-pytorch-transformers/examples/ckbc_demo
-pytorch-transformers/examples/comet-*
+examples/ckbc_demo/*.pickle
+examples/comet-*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

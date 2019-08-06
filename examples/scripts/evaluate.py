@@ -1,7 +1,6 @@
 import pickle, sys
 from pprint import pprint
-sys.path.append('./ckbc_demo')
-print(sys.path)
+sys.path.append(".")
 from ckbc_demo.demo_bilinear import Scorer
 
 pkl_file = open(str(sys.argv[1]), 'rb')
@@ -25,6 +24,7 @@ positive_prediction = 0
 novelsro = 0
 novelo = 0
 novelsr = 0
+print("\n\nPairs that are considered incorrect:\n")
 for pair in data1:
     try:
         results = scorer.gen_score(pair['e1'], pair['sequence'])
@@ -51,12 +51,9 @@ for pair in data1:
                 correct = True
             break
     if not correct:
-        print(pair['e1'], pair['r'], pair['sequence'])
+        print(""pair['e1'], pair['r'], pair['sequence'])
     if not found:
         print(rel)
-        #print(results)
-        #print("Not found Error")
-        #exit()
 print("score", positive_prediction / len(data1))
 print("N/Tsro", novelsro / len(data1))
 print("N/To", novelo / len(data1))

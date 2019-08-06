@@ -12,7 +12,7 @@ cd pytorch-transformers/examples
 
 TO be added.
 
-##Training
+## Training
 
 **Train COMET model (on gpt), as in the original paper** https://arxiv.org/pdf/1906.05317.pdf)
 
@@ -44,14 +44,14 @@ python scripts/comet-train.py --output_dir SOME_DIR --model_name openai-gpt --tr
 python scripts/interactive.py --model_type openai-gpt/gpt2/xlnet --model_name_or_path NAME_OR_PATH [--top_k 5]
 ```
 
-if the argument `NAME_OR_PATH` is the same as `model_type`, i.e. `gpt2` or `openai-gpt` or `xlnet`, then it will be evaluating on the original pretrained model (without fine tuning on ConceptNet). else if we are to test the COMET model we have trained, we can provide a specific path of the saved model directory.
+if the argument `NAME_OR_PATH` is the same as `model_type`, i.e. `gpt2` or `openai-gpt` or `xlnet`, then it will be evaluating on the original pretrained model (without fine tuning on ConceptNet). else if we are to test the COMET model that we have trained, we should provide a specific path of the saved model directory.
 
 TODO: real top_k 
 
 **Measuring the likelihood of a given sentence**
 
 ```
-python scripts/get_prob.py 
+python scripts/get_prob.py --model_type openai-gpt/gpt2/xlnet --model_name_or_path NAME_OR_PATH 
 ```
 
 the output number is the negative log likelihood of a given sentence.
@@ -59,14 +59,15 @@ the output number is the negative log likelihood of a given sentence.
 the number from commonsense sentence should be lower than from the anti-commonsense one
 
 **Evaluate on metrics**
+To use the Scorer in COMET paper, first download a pretrained scorer from http://.../ and unzip to examples/ckbc_demo
 
-First generate the results of test set into a file
+First, generate the results of test set into a file
 
 ```
 python scripts/generate.py --model_type openai-gpt/gpt2/xlnet --model_name_or_path NAME_OR_PATH --output_file OUTFILE
 ```
 
-Then run the next script
+Then run the next script to get the scores
 
 ```
 python scripts/evaluate.py OUTFILE
