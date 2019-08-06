@@ -1,0 +1,38 @@
+This is the README for the commonsense knowledge base completion demo.
+
+This program demonstrates the Bilinear AVG model developed and trained for commonsense knowledge base completion by Xiang Li, Aynaz Taheri, Lifu Tu, and Kevin Gimpel (ACL 2016).
+
+Example Command:
+python demo_bilinear.py drive_fast accident topfive
+(requires numpy)
+
+which should output the following:
+causes score: 0.992529380836
+hassubevent score: 0.986317631007
+hasprerequisite score: 0.248943002166
+usedfor score: 0.160948880494
+hasfirstsubevent score: 0.160748517657
+
+The demo outputs tuple scores for the given left term and right term on the 
+commandline (use underscore to indicate a space for multi-word terms), where 
+the last argument is the kind of relation you want reported:
+
+max: outputs the max scoring of all relations
+sum: outputs the sum of scores of all relations (useful if you only need a general relatedness score for two terms)
+all: outputs scores for all relations, sorted by score
+topfive: outputs scores for the top five highest-scoring relations
+{relation_name}: for a specific relation name (e.g., "Causes"), outputs score for the tuple with that relation
+
+Note: not all relations in ConceptNet are supported by this demo; the rarest relations are omitted because there is not enough data to learn from for them.
+
+References:
+
+Xiang Li, Aynaz Taheri, Lifu Tu, and Kevin Gimpel. Commonsense Knowledge Base Completion. Proc. of ACL, 2016.
+bib:
+@inproceedings{li-16,
+title = {Commonsense Knowledge Base Completion},
+author = {Xiang Li and Aynaz Taheri and Lifu Tu and Kevin Gimpel},
+booktitle = {Proc. of ACL},
+year = {2016}
+}
+
