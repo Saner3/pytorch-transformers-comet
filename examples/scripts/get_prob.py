@@ -76,7 +76,10 @@ def get_prob(model, sentence, tokenizer, args, skip=False):
     model.eval()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     eval_loss = 0
-    input_ids = tokenizer.encode(sentence + " " + tokenizer.eos_token)
+    if tokenizer.eos_token:
+        input_ids = tokenizer.encode(sentence + " " + tokenizer.eos_token)
+    else:
+        input_ids = tokenizer.encode(sentence)
     input_ids = torch.LongTensor(input_ids).unsqueeze(0).to(device)
     labels = input_ids.clone().to(device)
     with torch.no_grad():
@@ -123,7 +126,7 @@ def main():
     args.model_type = args.model_type.lower()
     model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
     tokenizer = tokenizer_class.from_pretrained(args.model_name_or_path)
-    if args.model_type == "openai-gpt" or args.model_type == "gpt2":
+    if (args.model_type == "openai-gpt" and args.model_name_or_path != "openai-gpt") or (args.model_type == "gpt2" and args.model_name_or_path == "gpt2"):
         tokenizer.add_special_tokens({"bos_token": "<bos>", 
                                     "eos_token": "<eos>",
                                     "unk_token": "<unk>"})
@@ -141,7 +144,7 @@ def main():
     print(args)
     # the first output is always different with the following ones
     # even with the same inputs. I dont know why yet, so I just skip the first time
-    get_prob(model, "...", tokenizer, args, skip=True)
+    get_prob(model, "this is a test", tokenizer, args, skip=True)
     while True:
         raw_text = args.prompt if args.prompt else input("Input Sentence >>> ")
         get_prob(model, raw_text, tokenizer, args)

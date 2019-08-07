@@ -33,82 +33,12 @@ from pytorch_transformers import (CONFIG_NAME, WEIGHTS_NAME, AdamW,
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
                               TensorDataset)
 from tqdm import tqdm, trange
+from utils import (load_comet_dataset, save_model, tokenize_and_encode, set_seed)
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
                     level = logging.INFO)
 logger = logging.getLogger(__name__)
-
-def accuracy(out, labels):
-    outputs = np.argmax(out, axis=1)
-    return np.sum(outputs == labels)
-
-relations = [
-    'AtLocation', 'CapableOf', 'Causes', 'CausesDesire',
-    'CreatedBy', 'DefinedAs', 'DesireOf', 'Desires', 'HasA',
-    'HasFirstSubevent', 'HasLastSubevent', 'HasPainCharacter',
-    'HasPainIntensity', 'HasPrerequisite', 'HasProperty',
-    'HasSubevent', 'InheritsFrom', 'InstanceOf', 'IsA',
-    'LocatedNear', 'LocationOfAction', 'MadeOf', 'MotivatedByGoal',
-    'NotCapableOf', 'NotDesires', 'NotHasA', 'NotHasProperty',
-    'NotIsA', 'NotMadeOf', 'PartOf', 'ReceivesAction', 'RelatedTo',
-    'SymbolOf', 'UsedFor'
-]
-
-split_into_words = {
-    'AtLocation': "at location",
-    'CapableOf': "capable of",
-    'Causes': "causes",
-    'CausesDesire': "causes desire",
-    'CreatedBy': "created by",
-    'DefinedAs': "defined as",
-    'DesireOf': "desire of",
-    'Desires': "desires",
-    'HasA': "has a",
-    'HasFirstSubevent': "has first subevent",
-    'HasLastSubevent': "has last subevent",
-    'HasPainCharacter': "has pain character",
-    'HasPainIntensity': "has pain intensity",
-    'HasPrerequisite': "has prequisite",
-    'HasProperty': "has property",
-    'HasSubevent': "has subevent",
-    'InheritsFrom': "inherits from",
-    'InstanceOf': 'instance of',
-    'IsA': "is a",
-    'LocatedNear': "located near",
-    'LocationOfAction': "location of action",
-    'MadeOf': "made of",
-    'MotivatedByGoal': "motivated by goal",
-    'NotCapableOf': "not capable of",
-    'NotDesires': "not desires",
-    'NotHasA': "not has a",
-    'NotHasProperty': "not has property",
-    'NotIsA': "not is a",
-    'NotMadeOf': "not made of",
-    'PartOf': "part of",
-    'ReceivesAction': "receives action",
-    'RelatedTo': "related to",
-    'SymbolOf': "symbol of",
-    'UsedFor': "used for"
-}
-def load_comet_dataset(dataset_path, end_token, rel_lang=True, toy=False):
-    with open(dataset_path, encoding='utf_8') as f:
-        f = f.read().splitlines()
-        if toy:
-            f = f[:100]
-        output = []
-        for line in tqdm(f):
-            line = line.split("\t")
-            line[2] += (" " + end_token)
-            if line[3] == "0":
-                # negative samples
-                continue
-            if rel_lang:
-                output.append((line[1], split_into_words[line[0]], line[2])) # e1, r, e2
-            else:
-                output.append((line[1], line[0], line[2]))
-        print(len(output))
-    return output
 
 def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2):
     tensor_datasets = []
@@ -116,7 +46,7 @@ def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2):
         n_batch = len(dataset)
         input_ids = np.full((n_batch, input_len), fill_value=0, dtype=np.int64)
 
-        for i, (e1, r, e2), in enumerate(dataset):
+        for i, (e1, r, e2, label), in enumerate(dataset):
             # truncate if input is too long
             if len(e1) > max_e1:
                 e1 = e1[:max_e1]
@@ -146,22 +76,6 @@ def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2):
     return tensor_datasets
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# Save a trained model
-def save_model(model, tokenizer, output_dir):
-    # Save a trained model, configuration and tokenizer
-    model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
-
-    output_model_file = os.path.join(output_dir, WEIGHTS_NAME)
-    output_config_file = os.path.join(output_dir, CONFIG_NAME)
-
-    torch.save(model_to_save.state_dict(), output_model_file)
-    model_to_save.config.to_json_file(output_config_file)
-    tokenizer.save_vocabulary(output_dir)
-
-    # Load a trained model and vocabulary that you have fine-tuned
-    #model = GPT2LMHeadModel.from_pretrained(output_dir)
-    #tokenizer = GPT2Tokenizer.from_pretrained(output_dir)
-    #model.to(device)
 
 def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, args):
     model.eval()
@@ -228,10 +142,7 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
+    set_seed(args.seed)
 
     n_gpu = torch.cuda.device_count()
     logger.info("device: {}, n_gpu {}".format(device, n_gpu))
@@ -268,13 +179,6 @@ def main():
     print("special tokens:", tokenizer.special_tokens_map)
 
     # Load and encode the datasets
-    def tokenize_and_encode(obj):
-        """ Tokenize and encode a nested object """
-        if isinstance(obj, str):
-            return tokenizer.encode(obj)
-        elif isinstance(obj, int):
-            return obj
-        return list(tokenize_and_encode(o) for o in obj)
     logger.info("Encoding dataset...")
     train_dataset = load_comet_dataset(args.train_dataset, end_token, toy=args.toy)
     eval_dataset1 = load_comet_dataset(args.eval_dataset1, end_token, toy=args.toy)
@@ -282,7 +186,7 @@ def main():
     eval_dataset = eval_dataset1 + eval_dataset2
     test_dataset = load_comet_dataset(args.test_dataset, end_token, toy=args.toy)
     datasets = (train_dataset, eval_dataset, test_dataset)
-    encoded_datasets = tokenize_and_encode(datasets)
+    encoded_datasets = tokenize_and_encode(datasets, tokenizer)
     max_e1 = 10
     max_r = 5
     max_e2 = 15 + 1
@@ -322,10 +226,9 @@ def main():
     if args.do_train:
         nb_tr_steps = 0
         model.train()
-        for cur_epoch_num in range(int(args.num_train_epochs)):#, desc="Epoch"):
+        for cur_epoch_num in range(int(args.num_train_epochs)):
             print("Epoch:", cur_epoch_num)
-            #tqdm_bar = tqdm(train_dataloader, desc="Training")
-            for step, batch in enumerate(train_dataloader):#tqdm_bar):
+            for step, batch in enumerate(train_dataloader):
                 batch = tuple(t.to(device) for t in batch)
                 input_ids, lm_labels, input_mask = batch
                 results = model(input_ids, labels=lm_labels, input_mask=input_mask)
@@ -339,9 +242,7 @@ def main():
                 optimizer.step()
                 optimizer.zero_grad()
                 loss = loss.item()
-                #exp_average_loss = loss.item() if exp_average_loss is None else 0.7*exp_average_loss+0.3*loss.item()
                 nb_tr_steps += 1
-                #tqdm_bar.desc = "Training loss: {:.2e} PPL: {:.3e}".format(exp_average_loss, PPL)
                 if nb_tr_steps % (args.eval_per_steps/10) == 0:
                     PPL = np.exp(loss) if loss < 300 else np.inf
                     print("Training loss:", loss, "ppl:", PPL)

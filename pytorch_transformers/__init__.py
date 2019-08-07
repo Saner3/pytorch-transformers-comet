@@ -36,7 +36,7 @@ from .modeling_xlm import (XLMConfig, XLMPreTrainedModel , XLMModel,
                            XLMWithLMHeadModel, XLMForSequenceClassification,
                            XLMForQuestionAnswering, XLM_PRETRAINED_CONFIG_ARCHIVE_MAP,
                            XLM_PRETRAINED_MODEL_ARCHIVE_MAP)
-from .modeling_utils import (WEIGHTS_NAME, CONFIG_NAME, TF_WEIGHTS_NAME,
+from .modeling_utils import (WEIGHTS_NAME, CONFIG_NAME, TF_WEIGHTS_NAME, SequenceSummary,
                           PretrainedConfig, PreTrainedModel, prune_layer, Conv1D)
 
 from .optimization import (AdamW, ConstantLRSchedule, WarmupConstantSchedule, WarmupCosineSchedule,
