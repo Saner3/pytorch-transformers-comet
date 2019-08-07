@@ -55,6 +55,7 @@ the output score is the negative log likelihood of a given sentence.
 the score from commonsense sentence should be lower than from the anti-commonsense one
 
 **Evaluate on metrics**
+
 To use the Scorer in COMET paper, first download a pretrained scorer from http://.../ and unzip to examples/ckbc_demo
 
 To evaluate a model, first generate the results of test set into a file
@@ -79,8 +80,15 @@ python scripts/evaluate.py OUTFILE
 
 **train a classifier on top of COMET models**
 
+Training:
 ```
+python scripts/train_classifier.py --model_type openai-gpt/gpt2/xlnet --do_train --train_batch_size 32 --model_name_or_path NAME_OR_PATH
+```
+The classifier is trained on top of the NAME_OR_PATH model, for example, if we want to train the classifier on top of COMET, specify the path to a pretrained COMET model. If we want to fix the parameters of the transformer during training, add `--fix_weights` argument.
 
+Test a classifier:
+```
+python scripts/use_classifier.py --model_type openai-gpt/gpt2/xlnet --interactive --eval_testset --model_path PATH
 ```
 
 
