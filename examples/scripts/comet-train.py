@@ -133,7 +133,7 @@ def main():
     parser.add_argument('--train_batch_size', type=int, default=64)
     parser.add_argument('--eval_batch_size', type=int, default=16)
     parser.add_argument('--max_grad_norm', type=int, default=1)
-    parser.add_argument('--learning_rate', type=float, default=1e-5) # 6.25e-5 default
+    parser.add_argument('--learning_rate', type=float, default=1e-5)
     parser.add_argument('--warmup_proportion', type=float, default=0.002)
     parser.add_argument('--lr_schedule', type=str, default='warmup_linear')
     parser.add_argument('--weight_decay', type=float, default=0.0)

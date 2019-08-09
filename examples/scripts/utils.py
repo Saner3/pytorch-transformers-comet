@@ -85,7 +85,8 @@ def save_model(model, tokenizer, output_dir):
 
     torch.save(model_to_save.state_dict(), output_model_file)
     model_to_save.config.to_json_file(output_config_file)
-    tokenizer.save_vocabulary(output_dir)
+    #tokenizer.save_vocabulary(output_dir)
+    tokenizer.save_pretrained(output_dir)
 
 # Load and encode the datasets
 def tokenize_and_encode(obj, tokenizer):

@@ -140,10 +140,7 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')
         indices_to_remove = sorted_indices[sorted_indices_to_remove]
         logits[indices_to_remove] = filter_value
     return logits
-<<<<<<< HEAD
 
-=======
->>>>>>> b7b14d583f606144c32547d8aa6b408eb9a733ae
 def load_comet_dataset(dataset_path, end_token, rel_lang=True):
     """ Output a list of tuples(story, 1st continuation, 2nd continuation, label) """
     with open(dataset_path, encoding='utf_8') as f:
@@ -159,10 +156,7 @@ def load_comet_dataset(dataset_path, end_token, rel_lang=True):
             else:
                 output.append((line[1], line[0], line[2]))
     return output
-<<<<<<< HEAD
 
-=======
->>>>>>> b7b14d583f606144c32547d8aa6b408eb9a733ae
 def pre_process_datasets(encoded_datasets, encoded_paddings, input_len, max_e1, max_r, max_e2, is_xlnet=False):
     """ Pre-process datasets containing lists of tuples(story, 1st continuation, 2nd continuation, label)
 
@@ -240,10 +234,7 @@ def sample_sequence(model, max_length, padding_length, tokenizer, batch, max_e1=
             filtered_logits = top_k_top_p_filtering(next_token_logits, top_k=top_k, top_p=top_p)
             if not is_greedy:
                 next_token = torch.multinomial(F.softmax(filtered_logits, dim=-1), num_samples=1)
-<<<<<<< HEAD
                 NotImplementedError
-=======
->>>>>>> b7b14d583f606144c32547d8aa6b408eb9a733ae
             else:
                 next_token = torch.argmax(F.softmax(filtered_logits, dim=-1), dim=-1).unsqueeze(0).unsqueeze(0)
             generated = torch.cat((generated, next_token), dim=1)
@@ -261,29 +252,18 @@ def main():
                         help="Model type selected in the list: " + ", ".join(MODEL_CLASSES.keys()))
     parser.add_argument("--model_name_or_path", default=None, type=str, required=True,
                         help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(ALL_MODELS))
-<<<<<<< HEAD
     parser.add_argument("--output_file", default=None, type=str, required=True,
                         help="Output file to store results")
-=======
->>>>>>> b7b14d583f606144c32547d8aa6b408eb9a733ae
     parser.add_argument("--length", type=int, default=20)
     parser.add_argument("--is_greedy", action='store_true', help="Use greedy decoding or topk/topp.")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--top_k", type=int, default=0)
-<<<<<<< HEAD
     parser.add_argument("--top_p", type=float, default=0.0)
-=======
-    parser.add_argument("--top_p", type=float, default=0.9)
->>>>>>> b7b14d583f606144c32547d8aa6b408eb9a733ae
     parser.add_argument("--no_cuda", action='store_true',
                         help="Avoid using CUDA when available")
     parser.add_argument('--seed', type=int, default=42,
                         help="random seed for initialization")
-<<<<<<< HEAD
     parser.add_argument('--test_dataset', type=str, default='data/conceptnet/test.txt')
-=======
-    parser.add_argument('--test_dataset', type=str, default='/nas/home/jsun/comet-commonsense/data/conceptnet/test.txt')
->>>>>>> b7b14d583f606144c32547d8aa6b408eb9a733ae
     parser.add_argument('--eval_batch_size', type=int, default=1)
     args = parser.parse_args()
 
@@ -296,15 +276,6 @@ def main():
     model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
     tokenizer = tokenizer_class.from_pretrained(args.model_name_or_path)
     model = model_class.from_pretrained(args.model_name_or_path)
-<<<<<<< HEAD
-    if args.model_type == "openai-gpt" or args.model_type == "gpt2":
-        tokenizer.add_special_tokens({"bos_token": "<bos>", 
-                                    "eos_token": "<eos>",
-                                    "unk_token": "<unk>"})
-    print("vocab size:", len(tokenizer))
-    #model.resize_token_embeddings(len(tokenizer))
-=======
->>>>>>> b7b14d583f606144c32547d8aa6b408eb9a733ae
     model.to(args.device)
     model.eval()
 
@@ -343,11 +314,7 @@ def main():
     test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=args.eval_batch_size)
     model.eval()
     results = [] 
-<<<<<<< HEAD
     for step, batch in enumerate(test_dataloader):
-=======
-    for step, batch in enumerate(test_dataloader):#tqdm_bar):
->>>>>>> b7b14d583f606144c32547d8aa6b408eb9a733ae
         batch = tuple(t.to(device) for t in batch)
         out = sample_sequence(
             model=model,
@@ -376,13 +343,8 @@ def main():
             r = tokenizer.decode(r, clean_up_tokenization_spaces=True)
             e2 = tokenizer.decode(e2, clean_up_tokenization_spaces=True)
             results.append({'e1': e1, 'r': r, 'sequence': e2})
-<<<<<<< HEAD
     output_file = open(args.output_file, "wb")
     pickle.dump(results, output_file)
-=======
-    outputfile = open("gen-result-gpt2-sameargs.pickle", "wb")
-    pickle.dump(results, outputfile)
->>>>>>> b7b14d583f606144c32547d8aa6b408eb9a733ae
 
 if __name__ == '__main__':
     main()

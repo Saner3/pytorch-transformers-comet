@@ -148,11 +148,6 @@ def main():
     model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
     tokenizer = tokenizer_class.from_pretrained(args.model_name_or_path)
     model = model_class.from_pretrained(args.model_name_or_path)
-    if args.model_type == "openai-gpt" or args.model_type == "gpt2":
-        tokenizer.add_special_tokens({"bos_token": "<bos>", 
-                                    "eos_token": "<eos>",
-                                    "unk_token": "<unk>"})
-    print("vocab size:", len(tokenizer))
     model.to(args.device)
     model.eval()
 
