@@ -274,7 +274,8 @@ class Attention(nn.Module):
         # XD: self.b may be larger than w, so we need to crop it
         b = self.bias[:, :, : w.size(-2), : w.size(-1)]
         if input_mask is not None:
-            b = b * input_mask.view(input_mask.size(0), 1, -1)
+            b = b * (1 - input_mask.view(input_mask.size(0), 1, -1))
+            #b = b * input_mask.view(input_mask.size(0), 1, -1)
             b = b.permute(1,0,2,3)
         w = w * b + -1e9 * (1 - b)
 

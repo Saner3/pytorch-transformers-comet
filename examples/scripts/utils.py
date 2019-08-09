@@ -32,6 +32,7 @@ split_into_words = {
     'HasPainCharacter': "has pain character",
     'HasPainIntensity': "has pain intensity",
     'HasPrerequisite': "has prequisite",
+    # actually it is "has prerequisite, but models are trained on it ..."
     'HasProperty': "has property",
     'HasSubevent': "has subevent",
     'InheritsFrom': "inherits from",
@@ -54,8 +55,19 @@ split_into_words = {
     'UsedFor': "used for"
 }
 
+PADDING_TEXT = """ In 1991, the remains of Russian Tsar Nicholas II and his family
+(except for Alexei and Maria) are discovered.
+The voice of Nicholas's young son, Tsarevich Alexei Nikolaevich, narrates the
+remainder of the story. <eod> </s> <eos>
+1883 Western Siberia,
+a young Grigori Rasputin is asked by his father and a group of men to perform magic.
+Rasputin has a vision and denounces one of the men as a horse thief. Although his
+father initially slaps him for making such an accusation, Rasputin watches as the
+man is chased outside and beaten. Twenty years later, Rasputin sees a vision of
+the Virgin Mary, prompting him to become a priest. Rasputin quickly becomes famous,
+with people, even a bishop, begging for his blessing. <eod> </s> <eos>"""
+
 def load_comet_dataset(dataset_path, end_token, rel_lang=True, toy=False, discard_negative=True):
-    """ Output a list of tuples(story, 1st continuation, 2nd continuation, label) """
     if not end_token:
         end_token = ""
     with open(dataset_path, encoding='utf_8') as f:
@@ -65,7 +77,7 @@ def load_comet_dataset(dataset_path, end_token, rel_lang=True, toy=False, discar
         output = []
         for line in tqdm(f):
             line = line.split("\t")
-            if discard_negative and line[3] == "0":    # negative samples
+            if discard_negative and line[3] == "0":    # discard negative samples
                 continue
             line[2] += " " + end_token
             label = int(line[3]) if not discard_negative else float(line[3])

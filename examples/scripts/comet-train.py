@@ -13,18 +13,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" transformer model fine-tuning on comet.
-    Adapted from https://github.com/huggingface/pytorch-openai-transformer-lm/blob/master/train.py
-    It self adapted from https://github.com/openai/finetune-transformer-lm/blob/master/train.py
-"""
+
 import argparse
 import logging
-import os
+import os, sys
 import random
 import datetime
 
 import numpy as np
 import torch
+sys.path.insert(0, "..")
 from pytorch_transformers import (CONFIG_NAME, WEIGHTS_NAME, AdamW,
                                   GPT2LMHeadModel, GPT2Tokenizer, GPT2Config,
                                   XLNetLMHeadModel, XLNetTokenizer, XLNetConfig, 
@@ -33,15 +31,18 @@ from pytorch_transformers import (CONFIG_NAME, WEIGHTS_NAME, AdamW,
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
                               TensorDataset)
 from tqdm import tqdm, trange
-from utils import (load_comet_dataset, save_model, tokenize_and_encode, set_seed)
+import torch.nn.functional as F
+from utils import (load_comet_dataset, save_model, tokenize_and_encode, set_seed, PADDING_TEXT)
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
                     level = logging.INFO)
 logger = logging.getLogger(__name__)
 
-def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2):
+def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2, paddings=[]):
     tensor_datasets = []
+    padding_length = len(paddings)
+    input_len += padding_length
     for dataset in encoded_datasets:
         n_batch = len(dataset)
         input_ids = np.full((n_batch, input_len), fill_value=0, dtype=np.int64)
@@ -55,12 +56,13 @@ def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2):
             if len(e2) > max_e2:
                 e2 = e2[:max_e2]
 
-            input_ids[i, :len(e1)] = e1
-            start_r = max_e1
-            end_r = max_e1 + len(r)
+            input_ids[i, :padding_length] = paddings
+            input_ids[i, padding_length:padding_length+len(e1)] = e1
+            start_r = max_e1 + padding_length
+            end_r = max_e1 + len(r) + padding_length
             input_ids[i, start_r:end_r] = r
-            start_e2 = max_e1 + max_r
-            end_e2 = max_e1 + max_r + len(e2)
+            start_e2 = max_e1 + max_r + padding_length
+            end_e2 = max_e1 + max_r + len(e2) + padding_length
             input_ids[i, start_e2:end_e2] = e2
             if i == 0:
                 print("one encoded sample: e1", e1, "r", r, "e2", e2, "input_ids:", input_ids[i])
@@ -69,7 +71,7 @@ def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2):
         lm_labels = np.copy(input_ids)
         lm_labels[lm_labels == 0] = -1  # do not calculate loss on paddings
         lm_labels[:, :max_e1+max_r] = -1    # do not calculate loss on the first part
-        input_mask = (input_ids != 0)   # attention mask
+        input_mask = (input_ids == 0)   # attention mask
         all_inputs = (input_ids, lm_labels, input_mask)
         tensor_datasets.append((torch.tensor(input_ids), torch.tensor(lm_labels), 
                                 torch.tensor(input_mask).to(torch.float32)))
@@ -77,7 +79,7 @@ def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, args):
+def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding=[]):
     model.eval()
     eval_loss = 0
     nb_eval_steps, nb_eval_examples = 0, 0
@@ -89,11 +91,28 @@ def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, args):
         batch_size = len(batch)
         input_ids, lm_labels, input_mask = batch
         with torch.no_grad():
-            results = model(input_ids, labels=lm_labels, input_mask=input_mask)
             if args.model_name == "gpt2":
+                results = model(input_ids, labels=lm_labels, input_mask=input_mask)
                 loss, logits, past = results
             elif args.model_name == "openai-gpt":
+                results = model(input_ids, labels=lm_labels, input_mask=input_mask)
                 loss, logits = results
+            elif args.model_name.startswith("xlnet"):
+                padding_length = len(encoded_padding)
+                seq_length = input_ids.size(1)
+                batch_size = input_ids.size(0)
+                lm_labels = lm_labels[:, -max_e2:]
+                start_pos = padding_length + max_e1 + max_r
+                perm_mask = torch.zeros((batch_size, seq_length, seq_length), dtype=torch.float, device=device)
+                perm_mask[:, :, start_pos:] = 1.0
+                perm_mask = torch.triu(perm_mask)
+                target_mapping = torch.zeros((batch_size, max_e2, seq_length), dtype=torch.float, device=device)
+                for i in range(max_e2):
+                    target_mapping[:, i, start_pos + i] = 1.0
+                inputs = {'input_ids': input_ids, 'input_mask': input_mask, 'perm_mask': perm_mask, 'target_mapping': target_mapping}
+                outputs = model(**inputs)
+                logits = outputs[0]
+                loss = F.cross_entropy(logits.view(-1, logits.size(-1)), lm_labels.contiguous().view(-1), ignore_index=-1)
             eval_loss += loss * batch_size
             nb_eval_steps += batch_size
             # display some examples
@@ -102,7 +121,11 @@ def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, args):
                 value, indices = logits.max(dim=-1)
                 sample_index = random.randint(0, batch_size - 1)
                 print("input:", tokenizer.decode(input_ids[sample_index].tolist()))
-                output = indices[sample_index].tolist()[max_e1 + max_r - 1:]
+                if not args.model_name.startswith("xlnet"):
+                    output = indices[sample_index].tolist()[max_e1 + max_r - 1:]
+                else:
+                    output = indices[sample_index].tolist()
+                    
                 try:
                     eos_pos = output.index(eos_token)
                 except:
@@ -117,9 +140,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', type=str, default='gpt2',
                         help='pretrained model name')
+    parser.add_argument('--reload_path', type=str, default=None,
+                        help='pretrained model name')                    
     parser.add_argument("--rel_lang", action='store_true', help="Use natural language to represent relations.")
     parser.add_argument("--do_train", action='store_true', help="do training")
     parser.add_argument("--toy", action='store_true', help="test code")
+    parser.add_argument("--padding_text", action='store_true', help="xlnet needs a padding text")
     parser.add_argument("--output_dir", default=None, type=str, required=True,
                         help="The output directory where the model predictions and checkpoints will be written.")
     parser.add_argument('--train_dataset', type=str, default='data/conceptnet/train100k.txt')
@@ -159,6 +185,10 @@ def main():
         Tokenizer = GPT2Tokenizer
         Model = GPT2LMHeadModel
         Config = GPT2Config
+    elif args.model_name.startswith("xlnet"):
+        Tokenizer = XLNetTokenizer
+        Model = XLNetLMHeadModel
+        Config = XLNetConfig
     else:
         exit()
 
@@ -193,8 +223,9 @@ def main():
     input_length = max_e1 + max_r + max_e2
     best_loss = 1e10
    
+    encoded_padding = tokenize_and_encode(PADDING_TEXT, tokenizer) if args.padding_text else []
     # Prepare inputs tensors and dataloaders
-    tensor_datasets = pre_process_datasets(encoded_datasets, input_length, max_e1, max_r, max_e2)
+    tensor_datasets = pre_process_datasets(encoded_datasets, input_length, max_e1, max_r, max_e2, paddings=encoded_padding)
     train_tensor_dataset, eval_tensor_dataset, test_tensor_dataset = tensor_datasets[0], tensor_datasets[1], tensor_datasets[2]
 
     train_data = TensorDataset(*train_tensor_dataset)
@@ -231,10 +262,27 @@ def main():
             for step, batch in enumerate(train_dataloader):
                 batch = tuple(t.to(device) for t in batch)
                 input_ids, lm_labels, input_mask = batch
-                results = model(input_ids, labels=lm_labels, input_mask=input_mask)
+                if args.model_name.startswith("xlnet"):
+                    padding_length = len(encoded_padding)
+                    batch_size = input_ids.size(0)
+                    seq_length = input_ids.size(1)
+                    lm_labels = lm_labels[:, -max_e2:]
+                    start_pos = padding_length + max_e1 + max_r
+                    perm_mask = torch.zeros((batch_size, seq_length, seq_length), dtype=torch.float, device=device)
+                    perm_mask[:, :, start_pos:] = 1.0
+                    perm_mask = torch.triu(perm_mask)
+                    target_mapping = torch.zeros((batch_size, max_e2, seq_length), dtype=torch.float, device=device)
+                    for i in range(max_e2):
+                        target_mapping[:, i, start_pos + i] = 1.0
+                    inputs = {'input_ids': input_ids, 'input_mask': input_mask, 'perm_mask': perm_mask, 'target_mapping': target_mapping}
+                    outputs = model(**inputs)
+                    logits = outputs[0]
+                    loss = F.cross_entropy(logits.view(-1, logits.size(-1)), lm_labels.contiguous().view(-1), ignore_index=-1)
                 if args.model_name == "gpt2":
+                    results = model(input_ids, labels=lm_labels, input_mask=input_mask)
                     loss, logits, past = results
                 elif args.model_name == "openai-gpt":
+                    results = model(input_ids, labels=lm_labels, input_mask=input_mask)
                     loss, logits = results
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
@@ -249,7 +297,7 @@ def main():
                 if nb_tr_steps % args.eval_per_steps == 0:
                     model.eval()
                     # evaluate
-                    eval_loss = evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, args).item()
+                    eval_loss = evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding).item()
                     print("\n\nevaluating\neval loss:", eval_loss, "ppl", np.exp(eval_loss) if eval_loss < 300 else np.inf)
                     # decide to save
                     if eval_loss < best_loss:
@@ -260,7 +308,7 @@ def main():
                         print("prev loss:", best_loss, "cur loss:", eval_loss)
                         best_loss = eval_loss
                     # test
-                    test_loss = evaluate(model, test_dataloader, tokenizer, max_e1, max_r, args).item()
+                    test_loss = evaluate(model, test_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding).item()
                     print("\n\ntesting\ntest loss:", test_loss, "ppl:", np.exp(test_loss) if test_loss < 300 else np.inf)
                     model.train()
 

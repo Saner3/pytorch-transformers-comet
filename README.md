@@ -26,7 +26,7 @@ python scripts/comet-train.py --output_dir SOME_DIR --do_train --model_name gpt2
 
 **Train COMET model on XLNet**
 
-I have not integrated the XLNet-comet-training code into the same file yet, it should appear soon
+python scripts/comet-train.py --output_dir SOME_DIR --do_train --model_name xlnet-large-cased --train_batch_size 4
 
 **Train COMET model with gpt framework but from scratch (no pre-train)**
 
@@ -67,7 +67,7 @@ python scripts/generate.py --model_type openai-gpt/gpt2/xlnet --model_name_or_pa
 Then run the next script to get the scores
 
 ```
-python scripts/evaluate.py OUTFILE
+python scripts/evaluate.py --input_file OUTFILE
 ```
 
 ### Applying COMET model to distinguish pos/neg samples

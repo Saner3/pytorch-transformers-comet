@@ -255,7 +255,7 @@ class Attention(nn.Module):
         nd, ns = w.size(-2), w.size(-1)
         b = self.bias[:, :, ns-nd:ns, :ns]
         if input_mask is not None:
-            b = b*input_mask.view(input_mask.size(0), 1, -1)
+            b = b * (1 - input_mask.view(input_mask.size(0), 1, -1))
             b = b.permute(1,0,2,3)
         w = w * b - 1e4 * (1 - b)
 

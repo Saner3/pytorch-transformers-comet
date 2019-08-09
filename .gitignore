@@ -1,5 +1,6 @@
 examples/ckbc_demo/*.pickle
 examples/models/*
+examples/outputs/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

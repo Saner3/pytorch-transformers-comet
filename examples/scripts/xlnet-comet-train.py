@@ -203,16 +203,10 @@ def train_step(model, padding, max_e1, max_r, max_e2, batch, tokenizer):
     perm_mask = torch.zeros((batch_size, seq_length, seq_length), dtype=torch.float, device=device)
     perm_mask[:, :, start_pos:] = 1.0
     perm_mask = torch.triu(perm_mask)
-    
-    #perm_mask[:, :, -1] = 1.0  # Previous tokens don't see last token
+
     target_mapping = torch.zeros((batch_size, max_e2, seq_length), dtype=torch.float, device=device)
     for i in range(max_e2):
         target_mapping[:, i, start_pos + i] = 1.0
-    #target_mapping[:, 0, -1] = 1.0  # predict last token
-    #print("input_ids:", input_ids)
-    #print("input_mask:", input_mask)
-    #print("perm_mask:", perm_mask)
-    #print("target_mapping:", target_mapping)
     inputs = {'input_ids': input_ids, 'input_mask': input_mask, 'perm_mask': perm_mask, 'target_mapping': target_mapping}
 
     outputs = model(**inputs)  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet (cached hidden-states)

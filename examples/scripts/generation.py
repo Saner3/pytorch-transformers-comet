@@ -22,10 +22,11 @@ import argparse
 import logging
 from tqdm import trange
 
-import pickle
+import pickle, sys
 import torch
 import torch.nn.functional as F
 import numpy as np
+sys.path.insert(0, "..")
 
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
                               TensorDataset)
@@ -35,43 +36,7 @@ from pytorch_transformers import GPT2LMHeadModel, GPT2Tokenizer
 from pytorch_transformers import OpenAIGPTLMHeadModel, OpenAIGPTTokenizer
 from pytorch_transformers import XLNetLMHeadModel, XLNetTokenizer
 from pytorch_transformers import TransfoXLLMHeadModel, TransfoXLTokenizer
-
-split_into_words = {
-    'AtLocation': "at location",
-    'CapableOf': "capable of",
-    'Causes': "causes",
-    'CausesDesire': "causes desire",
-    'CreatedBy': "created by",
-    'DefinedAs': "defined as",
-    'DesireOf': "desire of",
-    'Desires': "desires",
-    'HasA': "has a",
-    'HasFirstSubevent': "has first subevent",
-    'HasLastSubevent': "has last subevent",
-    'HasPainCharacter': "has pain character",
-    'HasPainIntensity': "has pain intensity",
-    'HasPrerequisite': "has prequisite",
-    'HasProperty': "has property",
-    'HasSubevent': "has subevent",
-    'InheritsFrom': "inherits from",
-    'InstanceOf': 'instance of',
-    'IsA': "is a",
-    'LocatedNear': "located near",
-    'LocationOfAction': "location of action",
-    'MadeOf': "made of",
-    'MotivatedByGoal': "motivated by goal",
-    'NotCapableOf': "not capable of",
-    'NotDesires': "not desires",
-    'NotHasA': "not has a",
-    'NotHasProperty': "not has property",
-    'NotIsA': "not is a",
-    'NotMadeOf': "not made of",
-    'PartOf': "part of",
-    'ReceivesAction': "receives action",
-    'RelatedTo': "related to",
-    'SymbolOf': "symbol of",
-    'UsedFor': "used for"
-}
+from utils import (set_seed, split_into_words, load_comet_dataset, tokenize_and_encode)
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
@@ -88,6 +53,7 @@ MODEL_CLASSES = {
     'xlnet': (XLNetLMHeadModel, XLNetTokenizer),
     'transfo-xl': (TransfoXLLMHeadModel, TransfoXLTokenizer),
 }
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Padding text to help Transformer-XL and XLNet with short prompts as proposed by Aman Rusia
 # in https://github.com/rusiaaman/XLNet-gen#methodology
@@ -102,14 +68,6 @@ father initially slaps him for making such an accusation, Rasputin watches as th
 man is chased outside and beaten. Twenty years later, Rasputin sees a vision of
 the Virgin Mary, prompting him to become a priest. Rasputin quickly becomes famous,
 with people, even a bishop, begging for his blessing. <eod> </s> <eos>"""
-
-
-def set_seed(args):
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    if args.n_gpu > 0:
-        torch.cuda.manual_seed_all(args.seed)
-
 
 def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
     """ Filter a distribution of logits using top-k and/or nucleus (top-p) filtering
@@ -141,37 +99,15 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')
         logits[indices_to_remove] = filter_value
     return logits
 
-def load_comet_dataset(dataset_path, end_token, rel_lang=True):
-    """ Output a list of tuples(story, 1st continuation, 2nd continuation, label) """
-    with open(dataset_path, encoding='utf_8') as f:
-        f = f.read().splitlines()
-        output = []
-        for line in f:
-            line = line.split("\t")
-            if line[3] == '0':
-                continue
-            line[2] += end_token
-            if rel_lang:
-                output.append((line[1], split_into_words[line[0]], line[2])) # e1, r, e2
-            else:
-                output.append((line[1], line[0], line[2]))
-    return output
-
 def pre_process_datasets(encoded_datasets, encoded_paddings, input_len, max_e1, max_r, max_e2, is_xlnet=False):
-    """ Pre-process datasets containing lists of tuples(story, 1st continuation, 2nd continuation, label)
-
-        To Transformer inputs of shape (n_batch, n_alternative, length) comprising for each batch, continuation:
-        input_ids[batch, alternative, :] = [start_token] + story[:cap_length] + [delimiter_token] + cont1[:cap_length] + [clf_token]
-    """
     tensor_datasets = []
     padding_lengths = len(encoded_paddings)
     input_len += padding_lengths
     for dataset in encoded_datasets:
         n_batch = len(dataset)
         input_ids = np.full((n_batch, input_len), fill_value=0, dtype=np.int64)
-        lm_labels = np.full((n_batch, input_len), fill_value=0, dtype=np.int64)
 
-        for i, (e1, r, e2), in enumerate(dataset):
+        for i, (e1, r, e2, label), in enumerate(dataset):
             if len(e1) > max_e1:
                 e1 = e1[:max_e1]
             if len(r) > max_r:
@@ -188,22 +124,10 @@ def pre_process_datasets(encoded_datasets, encoded_paddings, input_len, max_e1, 
             end_e2 = max_e1 + max_r + len(e2)+padding_lengths
             input_ids[i, start_e2:end_e2] = e2
 
-        #def make_loss_mask(sequences, max_event):
-        #    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        #    # print(sequences.size())
-
-        #    mask = (sequences != -1).float()
-        #    mask[:, :max_event] = 0
-        #    return mask.to(device)
-
-        lm_labels = np.copy(input_ids) #(input_ids[:, 1:])
+        lm_labels = np.copy(input_ids)
         lm_labels[lm_labels == 0] = -1
         lm_labels[:, :padding_lengths+max_e1+max_r] = -1
-        if not is_xlnet:
-            input_mask = torch.FloatTensor(input_ids != 0)
-        else:
-            input_mask = torch.FloatTensor(input_ids == 0)
-
+        input_mask = torch.FloatTensor(input_ids == 0)
         all_inputs = (input_ids, lm_labels, input_mask)
         tensor_datasets.append(tuple(torch.tensor(t) for t in all_inputs))
     return tensor_datasets
@@ -242,7 +166,6 @@ def sample_sequence(model, max_length, padding_length, tokenizer, batch, max_e1=
                 break
             if not is_xlnet:
                 input_mask = torch.cat((input_mask, torch.ones(1,1).float().to(device)), dim=-1)
-    #print(generated)
     return generated[:, padding_length:]
 
 
@@ -270,7 +193,7 @@ def main():
     args.device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
     args.n_gpu = torch.cuda.device_count()
 
-    set_seed(args)
+    set_seed(args.seed)
 
     args.model_type = args.model_type.lower()
     model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
@@ -290,17 +213,10 @@ def main():
     logger.info("Encoding dataset...")
     end_token = tokenizer.eos_token
     # Load and encode the datasets
-    def tokenize_and_encode(obj):
-        """ Tokenize and encode a nested object """
-        if isinstance(obj, str):
-            return tokenizer.encode(obj)
-        elif isinstance(obj, int):
-            return obj
-        return list(tokenize_and_encode(o) for o in obj)
 
     test_dataset = load_comet_dataset(args.test_dataset, end_token)
-    encoded_datasets = tokenize_and_encode([test_dataset])
-    encoded_paddings = tokenize_and_encode(PADDING_TEXT) if bool(args.model_type == "xlnet") else []
+    encoded_datasets = tokenize_and_encode([test_dataset], tokenizer)
+    encoded_paddings = tokenize_and_encode(PADDING_TEXT, tokenizer) if bool(args.model_type == "xlnet") else []
     padding_length = len(encoded_paddings)
     print("padding_length", padding_length)
     max_e1 = 10

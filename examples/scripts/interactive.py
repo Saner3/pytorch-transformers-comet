@@ -32,7 +32,7 @@ from pytorch_transformers import GPT2LMHeadModel, GPT2Tokenizer
 from pytorch_transformers import OpenAIGPTLMHeadModel, OpenAIGPTTokenizer
 from pytorch_transformers import XLNetLMHeadModel, XLNetTokenizer
 from pytorch_transformers import TransfoXLLMHeadModel, TransfoXLTokenizer
-from utils import 
+from utils import set_seed, split_into_words
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
