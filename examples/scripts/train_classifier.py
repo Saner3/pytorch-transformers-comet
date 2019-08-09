@@ -10,6 +10,7 @@ import numpy as np
 from tqdm import tqdm, trange
 
 import torch
+from torch import nn
 from pytorch_transformers import (CONFIG_NAME, WEIGHTS_NAME, AdamW, GPT2Config,
                                   GPT2Model, GPT2PreTrainedModel,
                                   GPT2Tokenizer, OpenAIGPTConfig,
@@ -26,15 +27,31 @@ logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(messa
 logger = logging.getLogger(__name__)
 
 class OpenAIGPTCLFModel(OpenAIGPTPreTrainedModel):
-    def __init__(self, model, config):
+    def __init__(self, model, config):#, num_features, dropout, num_labels):
         super(OpenAIGPTCLFModel, self).__init__(config)
         self.transformer = model
         self.clf_head = SequenceSummary(config)
-
+        # n_hid = 768
+        # self.clf_head = nn.Sequential(
+        #     nn.Dropout(0.1),
+        #     nn.Linear(num_features, n_hid),
+        #     nn.ReLU(),
+        #     #nn.BatchNorm1d(n_hid),
+        #     nn.Dropout(dropout),            
+        #     nn.Linear(n_hid, n_hid // 4),
+        #     nn.ReLU(),
+        #     #nn.BatchNorm1d(n_hid // 4),
+        #     nn.Dropout(dropout),
+        #     nn.Linear(n_hid // 4, num_labels),
+        # )
     def forward(self, x, input_mask=None, mc_token_ids=None, mc_labels=None):
         h = self.transformer(x, input_mask=input_mask)[0]
+        # cls_index = torch.full_like(h[..., :1, :], 
+        #                         h.shape[-2]-1, dtype=torch.long)
+        # # shape of cls_index: (bsz, XX, 1, hidden_size) where XX are optional leading dim of hidden_states
+        # h = h.gather(-2, cls_index).squeeze(-2) # shape (bsz, XX, hidden_size)
         logits = self.clf_head(h, mc_token_ids)
-
+        #logits = self.clf_head(h)
         if mc_labels is not None:
             loss_fct = torch.nn.CrossEntropyLoss()
             loss = loss_fct(logits.view(-1, logits.size(-1)),
@@ -71,7 +88,7 @@ def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2):
             labels[i] = label
             mc_token_ids[i] = end_e2 - 1
         
-        input_mask = (input_ids != 0)
+        input_mask = (input_ids == 0)
         all_inputs = (input_ids, labels, input_mask, mc_token_ids)
         tensor_datasets.append((torch.tensor(input_ids), torch.tensor(labels), 
                                 torch.tensor(input_mask).to(torch.float32), torch.tensor(mc_token_ids)))
@@ -179,7 +196,7 @@ def main():
     config.summary_type = "cls_index"
     config.summary_proj_to_labels=True
     config.summary_first_dropout=0.1
-    model = OpenAIGPTCLFModel(model, config=config)
+    model = OpenAIGPTCLFModel(model, config=config)#, num_features=768, dropout=0.1, num_labels=2)
     model.resize_token_embeddings(len(tokenizer))
     print(model.config)
     model.to(device)

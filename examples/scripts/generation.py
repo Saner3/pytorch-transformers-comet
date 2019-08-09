@@ -26,6 +26,7 @@ import pickle, sys
 import torch
 import torch.nn.functional as F
 import numpy as np
+from tqdm import tqdm
 sys.path.insert(0, "..")
 
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
@@ -117,11 +118,11 @@ def pre_process_datasets(encoded_datasets, encoded_paddings, input_len, max_e1, 
 
             input_ids[i, :padding_lengths] = encoded_paddings
             input_ids[i, padding_lengths:padding_lengths+len(e1)] = e1
-            start_r = max_e1+padding_lengths
-            end_r = max_e1 + len(r)+padding_lengths
+            start_r = max_e1 + padding_lengths
+            end_r = max_e1 + len(r) + padding_lengths
             input_ids[i, start_r:end_r] = r
-            start_e2 = max_e1 + max_r+padding_lengths
-            end_e2 = max_e1 + max_r + len(e2)+padding_lengths
+            start_e2 = max_e1 + max_r + padding_lengths
+            end_e2 = max_e1 + max_r + len(e2) + padding_lengths
             input_ids[i, start_e2:end_e2] = e2
 
         lm_labels = np.copy(input_ids)
@@ -133,7 +134,7 @@ def pre_process_datasets(encoded_datasets, encoded_paddings, input_len, max_e1, 
     return tensor_datasets
 
 
-def sample_sequence(model, max_length, padding_length, tokenizer, batch, max_e1=10, max_r=5, max_e2=16, temperature=1, top_k=0, top_p=0.0, is_xlnet=False, device='cpu', is_greedy=True):
+def sample_sequence(model, max_length, padding_length, tokenizer, batch, max_e1=10, max_r=5, max_e2=16, temperature=1, top_k=0, top_p=0.0, is_xlnet=False, device='cpu', is_greedy=True, eos_token=None):
     context, _, input_mask = batch
     num_samples = context.size(0)
     assert(num_samples==1)
@@ -162,8 +163,11 @@ def sample_sequence(model, max_length, padding_length, tokenizer, batch, max_e1=
             else:
                 next_token = torch.argmax(F.softmax(filtered_logits, dim=-1), dim=-1).unsqueeze(0).unsqueeze(0)
             generated = torch.cat((generated, next_token), dim=1)
-            if next_token.item() == tokenizer.encode(tokenizer.eos_token)[0]:
+            
+            if eos_token and next_token.item() == tokenizer.encode(tokenizer.eos_token)[0]:
                 break
+
+
             if not is_xlnet:
                 input_mask = torch.cat((input_mask, torch.ones(1,1).float().to(device)), dim=-1)
     return generated[:, padding_length:]
@@ -179,6 +183,7 @@ def main():
                         help="Output file to store results")
     parser.add_argument("--length", type=int, default=20)
     parser.add_argument("--is_greedy", action='store_true', help="Use greedy decoding or topk/topp.")
+    parser.add_argument("--rel_lang", action='store_true', help="Use natural language for relations.")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--top_k", type=int, default=0)
     parser.add_argument("--top_p", type=float, default=0.0)
@@ -214,7 +219,7 @@ def main():
     end_token = tokenizer.eos_token
     # Load and encode the datasets
 
-    test_dataset = load_comet_dataset(args.test_dataset, end_token)
+    test_dataset = load_comet_dataset(args.test_dataset, end_token, rel_lang=False)
     encoded_datasets = tokenize_and_encode([test_dataset], tokenizer)
     encoded_paddings = tokenize_and_encode(PADDING_TEXT, tokenizer) if bool(args.model_type == "xlnet") else []
     padding_length = len(encoded_paddings)
@@ -230,7 +235,7 @@ def main():
     test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=args.eval_batch_size)
     model.eval()
     results = [] 
-    for step, batch in enumerate(test_dataloader):
+    for step, batch in tqdm(enumerate(test_dataloader)):
         batch = tuple(t.to(device) for t in batch)
         out = sample_sequence(
             model=model,
@@ -246,7 +251,8 @@ def main():
             is_greedy=args.is_greedy,
             max_e1=max_e1,
             max_r=max_r,
-            max_e2=max_e2
+            max_e2=max_e2,
+            eos_token=end_token
         )
         out = out.tolist()
         for single_out in out:

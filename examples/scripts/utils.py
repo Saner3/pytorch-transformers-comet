@@ -73,18 +73,21 @@ def load_comet_dataset(dataset_path, end_token, rel_lang=True, toy=False, discar
     with open(dataset_path, encoding='utf_8') as f:
         f = f.read().splitlines()
         if toy:
-            f = f[:1000]
+            f = f[:10000]
         output = []
         for line in tqdm(f):
             line = line.split("\t")
-            if discard_negative and line[3] == "0":    # discard negative samples
+            try:
+                label = int(line[3]) if not discard_negative else float(line[3])
+            except:
+                label = -1
+            if discard_negative and label == 0:    # discard negative samples
                 continue
             line[2] += " " + end_token
-            label = int(line[3]) if not discard_negative else float(line[3])
             if rel_lang:
                 output.append((line[1], split_into_words[line[0]], line[2], label))
             else:
-                output.append((line[1], line[0], line[2], label))
+                output.append((line[1], line[0].lower(), line[2], label))
     return output
 
 # Save a trained model

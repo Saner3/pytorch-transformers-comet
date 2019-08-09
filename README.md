@@ -61,7 +61,7 @@ To use the Scorer in COMET paper, first download a pretrained scorer from http:/
 To evaluate a model, first generate the results of test set into a file
 
 ```
-python scripts/generate.py --model_type openai-gpt/gpt2/xlnet --model_name_or_path NAME_OR_PATH --output_file OUTFILE
+python scripts/generation.py --model_type openai-gpt/gpt2/xlnet --model_name_or_path NAME_OR_PATH --output_file OUTFILE --is_greedy
 ```
 
 Then run the next script to get the scores
@@ -82,7 +82,7 @@ python scripts/evaluate.py --input_file OUTFILE
 
 Training:
 ```
-python scripts/train_classifier.py --model_type openai-gpt/gpt2/xlnet --do_train --train_batch_size 32 --model_name_or_path NAME_OR_PATH
+python scripts/train_classifier.py --model_type openai-gpt/gpt2/xlnet --do_train --train_batch_size 32 --model_name_or_path NAME_OR_PATH --output_dir SOME_DIR
 ```
 The classifier is trained on top of the NAME_OR_PATH model, for example, if we want to train the classifier on top of COMET, specify the path to a pretrained COMET model. If we want to fix the parameters of the transformer during training, add `--fix_weights` argument.
 
