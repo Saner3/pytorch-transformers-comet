@@ -150,6 +150,7 @@ def main():
     parser.add_argument('--train_dataset', type=str, default='data/conceptnet/train100k.txt')
     parser.add_argument('--eval_dataset1', type=str, default='data/conceptnet/dev1.txt')
     parser.add_argument('--eval_dataset2', type=str, default='data/conceptnet/dev2.txt')
+    parser.add_argument('--eval_dataset', type=str, default='')
     parser.add_argument('--test_dataset', type=str, default='data/conceptnet/test.txt')
     parser.add_argument('--seed', type=int, default=123)
     parser.add_argument("--no_pretrain", action='store_true', help="w/o pretrained parameters initialized")
@@ -214,9 +215,12 @@ def main():
     # Load and encode the datasets
     logger.info("Encoding dataset...")
     train_dataset = load_comet_dataset(args.train_dataset, end_token, rel_lang=args.rel_lang, toy=args.toy)
-    eval_dataset1 = load_comet_dataset(args.eval_dataset1, end_token, rel_lang=args.rel_lang, toy=args.toy)
-    eval_dataset2 = load_comet_dataset(args.eval_dataset2, end_token, rel_lang=args.rel_lang, toy=args.toy)
-    eval_dataset = eval_dataset1 + eval_dataset2
+    if args.eval_dataset:
+        eval_dataset = load_comet_dataset(args.eval_dataset, end_token, rel_lang=args.rel_lang, toy=args.toy)
+    else:
+        eval_dataset1 = load_comet_dataset(args.eval_dataset1, end_token, rel_lang=args.rel_lang, toy=args.toy)
+        eval_dataset2 = load_comet_dataset(args.eval_dataset2, end_token, rel_lang=args.rel_lang, toy=args.toy)
+        eval_dataset = eval_dataset1 + eval_dataset2
     test_dataset = load_comet_dataset(args.test_dataset, end_token, rel_lang=args.rel_lang, toy=args.toy)
     datasets = (train_dataset, eval_dataset, test_dataset)
     encoded_datasets = tokenize_and_encode(datasets, tokenizer)

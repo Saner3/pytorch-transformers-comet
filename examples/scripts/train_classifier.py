@@ -87,6 +87,8 @@ def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2):
 
             labels[i] = label
             mc_token_ids[i] = end_e2 - 1
+            if i == 0:
+                print("one encoded sample: e1", e1, "r", r, "e2", e2, "input_ids:", input_ids[i])
         
         input_mask = (input_ids == 0)
         all_inputs = (input_ids, labels, input_mask, mc_token_ids)
@@ -128,18 +130,25 @@ def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, print_wrong=False
                         f_t += 1
             nb_eval_steps += 1
 
-    eval_loss = eval_loss / nb_eval_steps
-    eval_accuracy = true_num / total_num
     try:
-        print(" --------------------------------------------")
-        print("| \\ label |  0  |  1  | Precision | Recall")
-        print("|pred\\     ")
-        print("|-----\\-------------------------------------")
-        print("| 0 |        ", f_f, t_f, "   %.3f"%(f_f/(f_f+t_f)), "  %.3f"%(f_f/(f_f+f_t)))
-        print("| 1 |        ", f_t, t_t, "   %.3f"%(t_t/(f_t+t_t)), "  %.3f"%(t_t/(t_t+t_f)))
-        print("|___|________________________________________")
+        eval_loss = eval_loss / nb_eval_steps
+        eval_accuracy = true_num / total_num
     except:
-        pass
+        eval_loss = 0
+        eval_accuracy = 0
+    print(" --------------------------------------------")
+    print("| \\ label |  0  |  1  | Precision | Recall")
+    print("|pred\\     ")
+    print("|-----\\-------------------------------------")
+    try:
+        print("| 0 |        ", f_f, t_f, "   %.3f"%(f_f/(f_f+t_f)), "  %.3f"%(f_f/(f_f+f_t)))
+    except:
+        print("| 0 |        ", f_f, t_f)
+    try:
+        print("| 1 |        ", f_t, t_t, "   %.3f"%(t_t/(f_t+t_t)), "  %.3f"%(t_t/(t_t+t_f)))
+    except:
+        print("| 1 |        ", f_t, t_t)
+    print("|___|________________________________________")
     return eval_loss, eval_accuracy
 
 def main():
@@ -156,6 +165,7 @@ def main():
                         help="The output directory where the model predictions and checkpoints will be written.")
     parser.add_argument('--train_dataset', type=str, default='data/conceptnet/train400k.txt')
     parser.add_argument('--eval_dataset1', type=str, default='data/conceptnet/dev1.txt')
+    parser.add_argument("--two_test_dataset", action='store_true', help="do we have two test dataset")
     parser.add_argument('--eval_dataset2', type=str, default='data/conceptnet/dev2.txt')
     parser.add_argument('--test_dataset', type=str, default='data/conceptnet/test.txt')
     parser.add_argument('--seed', type=int, default=42)
@@ -196,17 +206,20 @@ def main():
     config.summary_type = "cls_index"
     config.summary_proj_to_labels=True
     config.summary_first_dropout=0.1
-    model = OpenAIGPTCLFModel(model, config=config)#, num_features=768, dropout=0.1, num_labels=2)
+    model = OpenAIGPTCLFModel(model, config=config)
     model.resize_token_embeddings(len(tokenizer))
     print(model.config)
     model.to(device)
     end_token = tokenizer.eos_token
 
     logger.info("Encoding dataset...")
-    train_dataset = load_comet_dataset(args.train_dataset, end_token, toy=args.toy, discard_negative=False)
-    eval_dataset = load_comet_dataset(args.eval_dataset1, end_token, toy=args.toy, discard_negative=False)
-    test_dataset1 = load_comet_dataset(args.eval_dataset2, end_token, toy=args.toy, discard_negative=False)
-    test_dataset2 = load_comet_dataset(args.test_dataset, end_token, toy=args.toy, discard_negative=False)
+    train_dataset = load_comet_dataset(args.train_dataset, end_token, toy=args.toy, rel_lang=args.rel_lang, discard_negative=False)
+    eval_dataset = load_comet_dataset(args.eval_dataset1, end_token, toy=args.toy, rel_lang=args.rel_lang, discard_negative=False)
+    if args.two_test_dataset:
+        test_dataset1 = load_comet_dataset(args.eval_dataset2, end_token, toy=args.toy, rel_lang=args.rel_lang, discard_negative=False)
+    else:
+        test_dataset1 = []
+    test_dataset2 = load_comet_dataset(args.test_dataset, end_token, toy=args.toy, rel_lang=args.rel_lang, discard_negative=False)
 
     datasets = (train_dataset, eval_dataset, test_dataset1, test_dataset2)
     encoded_datasets = tokenize_and_encode(datasets, tokenizer)

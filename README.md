@@ -57,7 +57,7 @@ python scripts/evaluate.py --input_file OUTFILE
 
 ### Applying COMET model to distinguish pos/neg samples
 
-**simply use a threshold.**
+**simply using a threshold.**
 
 ```
 
@@ -67,13 +67,13 @@ python scripts/evaluate.py --input_file OUTFILE
 
 Training:
 ```
-python scripts/train_classifier.py --model_type openai-gpt/gpt2/xlnet --do_train --train_batch_size 32 --model_name_or_path NAME_OR_PATH --output_dir SOME_DIR
+python scripts/train_classifier.py --model_type openai-gpt/gpt2/xlnet --do_train --rel_lang --train_batch_size 32 --model_name_or_path NAME_OR_PATH --output_dir SOME_DIR
 ```
 The classifier is trained on top of the NAME_OR_PATH model, for example, if we want to train the classifier on top of COMET, specify the path to a pretrained COMET model. If we want to fix the parameters of the transformer during training, add `--fix_weights` argument.
 
 Test a classifier:
 ```
-python scripts/use_classifier.py --model_type openai-gpt/gpt2/xlnet --interactive --eval_testset --model_path PATH
+python scripts/use_classifier.py --model_type openai-gpt/gpt2/xlnet --rel_lang --interactive --eval_testset --model_path PATH
 ```
 
 

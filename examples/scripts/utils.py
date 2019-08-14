@@ -73,7 +73,7 @@ def load_comet_dataset(dataset_path, end_token, rel_lang=True, toy=False, discar
     with open(dataset_path, encoding='utf_8') as f:
         f = f.read().splitlines()
         if toy:
-            f = f[:10000]
+            f = f[:1000]
         output = []
         for line in tqdm(f):
             line = line.split("\t")
@@ -88,6 +88,8 @@ def load_comet_dataset(dataset_path, end_token, rel_lang=True, toy=False, discar
                 output.append((line[1], split_into_words[line[0]], line[2], label))
             else:
                 output.append((line[1], line[0].lower(), line[2], label))
+        # print some samples
+        print(output[-1])
     return output
 
 # Save a trained model

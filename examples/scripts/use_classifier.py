@@ -36,6 +36,7 @@ def main():
     parser.add_argument("--eval_testset", action='store_true')
     parser.add_argument("--model_path", default=None, type=str, required=True,
                         help="The output directory where the model predictions and checkpoints will be written.")
+    parser.add_argument("--two_test_dataset", action='store_true', help="do we have two test dataset")
     parser.add_argument('--eval_dataset2', type=str, default='data/conceptnet/dev2.txt')
     parser.add_argument('--test_dataset', type=str, default='data/conceptnet/test.txt')
     parser.add_argument('--seed', type=int, default=42)
@@ -67,8 +68,12 @@ def main():
 
     if args.eval_testset:
         logger.info("Encoding dataset...")
-        test_dataset1 = load_comet_dataset(args.eval_dataset2, end_token, discard_negative=False)
-        test_dataset2 = load_comet_dataset(args.test_dataset, end_token, discard_negative=False)
+        if args.two_test_dataset:
+            test_dataset1 = load_comet_dataset(args.eval_dataset2, end_token, rel_lang=args.rel_lang, discard_negative=False)
+        else:
+            test_dataset1 = []
+        
+        test_dataset2 = load_comet_dataset(args.test_dataset, end_token, rel_lang=args.rel_lang, discard_negative=False)
         datasets = (test_dataset1, test_dataset2)
         encoded_datasets = tokenize_and_encode(datasets, tokenizer)
         max_e1 = 10
