@@ -183,6 +183,7 @@ def main():
                         help="Output file to store results")
     parser.add_argument("--length", type=int, default=20)
     parser.add_argument("--is_greedy", action='store_true', help="Use greedy decoding or topk/topp.")
+    parser.add_argument("--padding_text", action='store_true', help="xlnet need padding?")
     parser.add_argument("--rel_lang", action='store_true', help="Use natural language for relations.")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--top_k", type=int, default=0)
@@ -219,11 +220,11 @@ def main():
     end_token = tokenizer.eos_token
     # Load and encode the datasets
 
-    test_dataset = load_comet_dataset(args.test_dataset, end_token, rel_lang=False)
+    test_dataset = load_comet_dataset(args.test_dataset, end_token)
     encoded_datasets = tokenize_and_encode([test_dataset], tokenizer)
-    encoded_paddings = tokenize_and_encode(PADDING_TEXT, tokenizer) if bool(args.model_type == "xlnet") else []
+    encoded_paddings = tokenize_and_encode(PADDING_TEXT, tokenizer) if args.padding_text else []
     padding_length = len(encoded_paddings)
-    print("padding_length", padding_length)
+    print("padding_length:", padding_length)
     max_e1 = 10
     max_r = 5
     max_e2 = 15 + 1

@@ -31,10 +31,10 @@ negative_prediction = 0
 novelsro = 0
 novelo = 0
 novelsr = 0
-print("The Scorer does not support those relations:", " ".join( ['HasPainCharacter', 'HasPainIntensity', 'LocationOfAction', 'LocatedNear',
+print("The Scorer does not support those relations:\n", " ".join( ['HasPainCharacter', 'HasPainIntensity', 'LocationOfAction', 'LocatedNear',
 'DesireOf','NotMadeOf','InheritsFrom','InstanceOf','RelatedTo','NotDesires',
 'NotHasA','NotIsA','NotHasProperty','NotCapableOf']))
-print("\n\nPairs that are considered incorrect:\n")
+print("\nPairs that are considered incorrect:\n")
 for pair in data:
     try:
         results = scorer.gen_score(pair['e1'], pair['sequence'])
@@ -42,7 +42,7 @@ for pair in data:
         print("error:", pair)
         exit()
     rel = "".join(pair['r'].split())    # lower, no space,
-    # COMET code misspells "hasprerequisite"
+    # COMET code mis-spells "hasprerequisite"
     if rel == "hasprequisite":
         rel = "hasprerequisite"
     thispair = (pair['e1'], rel, pair['sequence'])
@@ -77,8 +77,9 @@ for pair in data:
                     print("NEGATIVE:", pair['e1'], pair['r'], pair['sequence'])
             break
 
-total_data_num = positive_prediction + negative_prediction
-print("score", positive_prediction / total_data_num)
+valid_data_num = positive_prediction + negative_prediction
+total_data_num = len(data)
+print("score", positive_prediction / valid_data_num)
 print("N/Tsro", novelsro / total_data_num)
 print("N/To", novelo / total_data_num)
 print("N/Tsr", novelsr / total_data_num)

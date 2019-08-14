@@ -15,23 +15,23 @@ cd examples
 **Train COMET model (on gpt), as in the original paper** https://arxiv.org/pdf/1906.05317.pdf)
 
 ```
-python scripts/comet-train.py --output_dir SOME_DIR --do_train --model_name openai-gpt --train_batch_size 32
+python scripts/comet-train.py --output_dir SOME_DIR --do_train --rel_lang --model_type openai-gpt --model_name_or_path openai-gpt --train_batch_size 32
 ```
 
 **Train COMET model on gpt-2**
 
 ```
-python scripts/comet-train.py --output_dir SOME_DIR --do_train --model_name gpt2 --train_batch_size 32
+python scripts/comet-train.py --output_dir SOME_DIR --do_train --rel_lang --model_type gpt2 --model_name_or_path gpt2 --train_batch_size 32
 ```
 
 **Train COMET model on XLNet**
 
-python scripts/comet-train.py --output_dir SOME_DIR --do_train --model_name xlnet-large-cased --train_batch_size 4
+python scripts/comet-train.py --output_dir SOME_DIR --do_train --rel_lang --model_type xlnet --model_name_or_path xlnet-large-cased --train_batch_size 4
 
 **Train COMET model with gpt framework but from scratch (no pre-train)**
 
 ```
-python scripts/comet-train.py --output_dir SOME_DIR --do_train --model_name openai-gpt --train_batch_size 32 --no_pretrain
+python scripts/comet-train.py --output_dir SOME_DIR --do_train --rel_lang --model_type openai-gpt --model_name_or_path openai-gpt --train_batch_size 32 --no_pretrain
 ```
 
 ## Evaluating
@@ -61,7 +61,7 @@ To use the Scorer in COMET paper, first download a pretrained scorer from http:/
 To evaluate a model, first generate the results of test set into a file
 
 ```
-python scripts/generation.py --model_type openai-gpt/gpt2/xlnet --model_name_or_path NAME_OR_PATH --output_file OUTFILE --is_greedy
+python scripts/generation.py --model_type openai-gpt/gpt2/xlnet --model_name_or_path NAME_OR_PATH --output_file OUTFILE --is_greedy --rel_lang
 ```
 
 Then run the next script to get the scores

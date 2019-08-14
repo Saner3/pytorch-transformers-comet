@@ -91,13 +91,13 @@ def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, enc
         batch_size = len(batch)
         input_ids, lm_labels, input_mask = batch
         with torch.no_grad():
-            if args.model_name == "gpt2":
+            if args.model_type == "gpt2":
                 results = model(input_ids, labels=lm_labels, input_mask=input_mask)
                 loss, logits, past = results
-            elif args.model_name == "openai-gpt":
+            elif args.model_type == "openai-gpt":
                 results = model(input_ids, labels=lm_labels, input_mask=input_mask)
                 loss, logits = results
-            elif args.model_name.startswith("xlnet"):
+            elif args.model_type == "xlnet":
                 padding_length = len(encoded_padding)
                 seq_length = input_ids.size(1)
                 batch_size = input_ids.size(0)
@@ -121,7 +121,7 @@ def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, enc
                 value, indices = logits.max(dim=-1)
                 sample_index = random.randint(0, batch_size - 1)
                 print("input:", tokenizer.decode(input_ids[sample_index].tolist()))
-                if not args.model_name.startswith("xlnet"):
+                if not args.model_type == "xlnet":
                     output = indices[sample_index].tolist()[max_e1 + max_r - 1:]
                 else:
                     output = indices[sample_index].tolist()
@@ -138,10 +138,9 @@ def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, enc
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', type=str, default='gpt2',
-                        help='pretrained model name')
-    parser.add_argument('--reload_path', type=str, default=None,
-                        help='pretrained model name')                    
+    parser.add_argument('--model_type', type=str, default='openai-gpt',
+                        help="model type: openai-gpt/gpt2/xlnet/...")
+    parser.add_argument('--model_name_or_path', type=str, default='openai-gpt', help="pretrained model path")              
     parser.add_argument("--rel_lang", action='store_true', help="Use natural language to represent relations.")
     parser.add_argument("--do_train", action='store_true', help="do training")
     parser.add_argument("--toy", action='store_true', help="test code")
@@ -176,29 +175,33 @@ def main():
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    # Load tokenizer and model
-    if args.model_name == "openai-gpt":
+    # select model type
+    if args.model_type == "openai-gpt":
         Tokenizer = OpenAIGPTTokenizer
         Model = OpenAIGPTLMHeadModel
         Config = OpenAIGPTConfig
-    elif args.model_name == "gpt2":
+    elif args.model_type == "gpt2":
         Tokenizer = GPT2Tokenizer
         Model = GPT2LMHeadModel
         Config = GPT2Config
-    elif args.model_name.startswith("xlnet"):
+    elif args.model_type == "xlnet":
         Tokenizer = XLNetTokenizer
         Model = XLNetLMHeadModel
         Config = XLNetConfig
     else:
         exit()
 
-    tokenizer = Tokenizer.from_pretrained(args.model_name)
+    # load pretrained model
+    tokenizer = Tokenizer.from_pretrained(args.model_name_or_path)
     if args.no_pretrain:
-        config = Config.from_pretrained(args.model_name)
+        # from scratch
+        config = Config.from_pretrained(args.model_type)
         model = Model(config)
     else:
-        model = Model.from_pretrained(args.model_name)
-    if args.model_name == "openai-gpt" or args.model_name == "gpt2":
+        model = Model.from_pretrained(args.model_name_or_path)
+
+    # if not reloading from existing checkpoints, add special tokens
+    if args.model_name_or_path == "openai-gpt" or args.model_name_or_path == "gpt2":
         tokenizer.add_special_tokens({"bos_token": "<bos>", 
                                     "eos_token": "<eos>",
                                     "unk_token": "<unk>"})
@@ -206,15 +209,15 @@ def main():
     model.resize_token_embeddings(len(tokenizer))
     model.to(device)
     end_token = tokenizer.eos_token
-    print("special tokens:", tokenizer.special_tokens_map)
+    print("\nspecial tokens:", tokenizer.special_tokens_map)
 
     # Load and encode the datasets
     logger.info("Encoding dataset...")
-    train_dataset = load_comet_dataset(args.train_dataset, end_token, toy=args.toy)
-    eval_dataset1 = load_comet_dataset(args.eval_dataset1, end_token, toy=args.toy)
-    eval_dataset2 = load_comet_dataset(args.eval_dataset2, end_token, toy=args.toy)
+    train_dataset = load_comet_dataset(args.train_dataset, end_token, rel_lang=args.rel_lang, toy=args.toy)
+    eval_dataset1 = load_comet_dataset(args.eval_dataset1, end_token, rel_lang=args.rel_lang, toy=args.toy)
+    eval_dataset2 = load_comet_dataset(args.eval_dataset2, end_token, rel_lang=args.rel_lang, toy=args.toy)
     eval_dataset = eval_dataset1 + eval_dataset2
-    test_dataset = load_comet_dataset(args.test_dataset, end_token, toy=args.toy)
+    test_dataset = load_comet_dataset(args.test_dataset, end_token, rel_lang=args.rel_lang, toy=args.toy)
     datasets = (train_dataset, eval_dataset, test_dataset)
     encoded_datasets = tokenize_and_encode(datasets, tokenizer)
     max_e1 = 10
@@ -262,7 +265,7 @@ def main():
             for step, batch in enumerate(train_dataloader):
                 batch = tuple(t.to(device) for t in batch)
                 input_ids, lm_labels, input_mask = batch
-                if args.model_name.startswith("xlnet"):
+                if args.model_type == "xlnet":
                     padding_length = len(encoded_padding)
                     batch_size = input_ids.size(0)
                     seq_length = input_ids.size(1)
@@ -278,10 +281,10 @@ def main():
                     outputs = model(**inputs)
                     logits = outputs[0]
                     loss = F.cross_entropy(logits.view(-1, logits.size(-1)), lm_labels.contiguous().view(-1), ignore_index=-1)
-                if args.model_name == "gpt2":
+                if args.model_type == "gpt2":
                     results = model(input_ids, labels=lm_labels, input_mask=input_mask)
                     loss, logits, past = results
-                elif args.model_name == "openai-gpt":
+                elif args.model_type == "openai-gpt":
                     results = model(input_ids, labels=lm_labels, input_mask=input_mask)
                     loss, logits = results
                 loss.backward()
