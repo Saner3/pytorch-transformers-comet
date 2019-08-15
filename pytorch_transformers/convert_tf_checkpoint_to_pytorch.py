@@ -47,11 +47,7 @@ if __name__ == "__main__":
                         default = None,
                         type = str,
                         required = True,
-<<<<<<< HEAD
-                        help = "Path the TensorFlow checkpoint path.")
-=======
                         help = "Path to the TensorFlow checkpoint path.")
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
     parser.add_argument("--bert_config_file",
                         default = None,
                         type = str,

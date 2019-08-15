@@ -335,11 +335,7 @@ class XLNetConfig(PretrainedConfig):
 
 try:
     from apex.normalization.fused_layer_norm import FusedLayerNorm as XLNetLayerNorm
-<<<<<<< HEAD
-except ImportError:
-=======
 except (ImportError, AttributeError) as e:
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
     logger.info("Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex .")
     class XLNetLayerNorm(nn.Module):
         def __init__(self, d_model, eps=1e-12):
@@ -716,14 +712,8 @@ class XLNetModel(XLNetPreTrainedModel):
 
     Examples::
 
-<<<<<<< HEAD
-        config = XLNetConfig.from_pretrained('xlnet-large-cased')
-        tokenizer = XLNetTokenizer.from_pretrained('xlnet-large-cased')
-        model = XLNetModel(config)
-=======
         tokenizer = XLNetTokenizer.from_pretrained('xlnet-large-cased')
         model = XLNetModel.from_pretrained('xlnet-large-cased')
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
         outputs = model(input_ids)
         last_hidden_states = outputs[0]  # The last hidden-state is the first element of the output tuple
@@ -1028,14 +1018,8 @@ class XLNetLMHeadModel(XLNetPreTrainedModel):
 
     Examples::
 
-<<<<<<< HEAD
-        config = XLNetConfig.from_pretrained('xlnet-large-cased')
-        tokenizer = XLNetTokenizer.from_pretrained('xlnet-large-cased')
-        model = XLNetLMHeadModel(config)
-=======
         tokenizer = XLNetTokenizer.from_pretrained('xlnet-large-cased')
         model = XLNetLMHeadModel.from_pretrained('xlnet-large-cased')
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         # We show how to setup inputs to predict a next token using a bi-directional context.
         input_ids = torch.tensor(tokenizer.encode("Hello, my dog is very <mask>")).unsqueeze(0)  # We will predict the masked token
         perm_mask = torch.zeros((1, input_ids.shape[1], input_ids.shape[1]), dtype=torch.float)
@@ -1091,11 +1075,7 @@ class XLNetForSequenceClassification(XLNetPreTrainedModel):
     r"""
         **labels**: (`optional`) ``torch.LongTensor`` of shape ``(batch_size,)``:
             Labels for computing the sequence classification/regression loss.
-<<<<<<< HEAD
-            Indices should be in ``[0, ..., config.num_labels]``.
-=======
             Indices should be in ``[0, ..., config.num_labels - 1]``.
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
             If ``config.num_labels == 1`` a regression loss is computed (Mean-Square loss),
             If ``config.num_labels > 1`` a classification loss is computed (Cross-Entropy).
 
@@ -1118,15 +1098,8 @@ class XLNetForSequenceClassification(XLNetPreTrainedModel):
 
     Examples::
 
-<<<<<<< HEAD
-        config = XLNetConfig.from_pretrained('xlnet-large-cased')
-        tokenizer = XLNetTokenizer.from_pretrained('xlnet-large-cased')
-        
-        model = XLNetForSequenceClassification(config)
-=======
         tokenizer = XLNetTokenizer.from_pretrained('xlnet-large-cased')
         model = XLNetForSequenceClassification.from_pretrained('xlnet-large-cased')
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
         labels = torch.tensor([1]).unsqueeze(0)  # Batch size 1
         outputs = model(input_ids, labels=labels)
@@ -1223,15 +1196,8 @@ class XLNetForQuestionAnswering(XLNetPreTrainedModel):
 
     Examples::
 
-<<<<<<< HEAD
-        config = XLMConfig.from_pretrained('xlm-mlm-en-2048')
-        tokenizer = XLMTokenizer.from_pretrained('xlm-mlm-en-2048')
-        
-        model = XLMForQuestionAnswering(config)
-=======
         tokenizer = XLMTokenizer.from_pretrained('xlm-mlm-en-2048')
         model = XLMForQuestionAnswering.from_pretrained('xlnet-large-cased')
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
         start_positions = torch.tensor([1])
         end_positions = torch.tensor([3])

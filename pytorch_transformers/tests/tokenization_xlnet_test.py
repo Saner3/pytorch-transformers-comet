@@ -89,8 +89,6 @@ class XLNetTokenizationTest(CommonTestCases.CommonTokenizerTester):
                                       u'9', u'2', u'0', u'0', u'0', u',', SPIECE_UNDERLINE + u'and', SPIECE_UNDERLINE + u'this',
                                       SPIECE_UNDERLINE + u'is', SPIECE_UNDERLINE + u'f', u'al', u'se', u'.'])
 
-<<<<<<< HEAD
-=======
     def test_sequence_builders(self):
         tokenizer = XLNetTokenizer.from_pretrained("xlnet-base-cased")
 
@@ -103,7 +101,6 @@ class XLNetTokenizationTest(CommonTestCases.CommonTokenizerTester):
         assert encoded_sentence == text + [4, 3]
         assert encoded_pair == text + [4] + text_2 + [4, 3]
 
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 
 if __name__ == '__main__':
     unittest.main()

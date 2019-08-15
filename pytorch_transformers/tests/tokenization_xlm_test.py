@@ -66,8 +66,6 @@ class XLMTokenizationTest(CommonTestCases.CommonTokenizerTester):
         self.assertListEqual(
             tokenizer.convert_tokens_to_ids(input_tokens), input_bpe_tokens)
 
-<<<<<<< HEAD
-=======
     def test_sequence_builders(self):
         tokenizer = XLMTokenizer.from_pretrained("xlm-mlm-en-2048")
 
@@ -79,7 +77,6 @@ class XLMTokenizationTest(CommonTestCases.CommonTokenizerTester):
 
         assert encoded_sentence == [1] + text + [1]
         assert encoded_pair == [1] + text + [1] + text_2 + [1]
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 
 if __name__ == '__main__':
     unittest.main()

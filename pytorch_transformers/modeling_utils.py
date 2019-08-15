@@ -365,14 +365,11 @@ class PreTrainedModel(nn.Module):
         The model is set in evaluation mode by default using ``model.eval()`` (Dropout modules are deactivated)
         To train the model, you should first set it back in training mode with ``model.train()``
 
-<<<<<<< HEAD
-=======
         The warning ``Weights from XXX not initialized from pretrained model`` means that the weights of XXX do not come pre-trained with the rest of the model.
         It is up to you to train those weights with a downstream fine-tuning task.
 
         The warning ``Weights from XXX not used in YYY`` means that the layer XXX is not used by YYY, therefore those weights are discarded.
 
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         Parameters:
             pretrained_model_name_or_path: either:
 

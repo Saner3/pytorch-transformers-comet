@@ -38,17 +38,10 @@ from setuptools import find_packages, setup
 
 setup(
     name="pytorch_transformers",
-<<<<<<< HEAD
-    version="1.0.0",
-    author="Thomas Wolf, Lysandre Debut, Victor Sanh, Tim Rault, Google AI Language Team Authors, Open AI team Authors",
-    author_email="thomas@huggingface.co",
-    description="Repository of pre-trained NLP Transformer models: BERT, GPT & GPT-2, Transformer-XL, XLNet and XLM",
-=======
     version="1.1.0",
     author="Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chaumond, Google AI Language Team Authors, Open AI team Authors",
     author_email="thomas@huggingface.co",
     description="Repository of pre-trained NLP Transformer models: BERT & RoBERTa, GPT & GPT-2, Transformer-XL, XLNet and XLM",
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
     long_description=open("README.md", "r", encoding='utf-8').read(),
     long_description_content_type="text/markdown",
     keywords='NLP deep learning transformer pytorch BERT GPT GPT-2 google openai CMU',

@@ -125,8 +125,6 @@ class BertTokenizationTest(CommonTestCases.CommonTokenizerTester):
         self.assertFalse(_is_punctuation(u"A"))
         self.assertFalse(_is_punctuation(u" "))
 
-<<<<<<< HEAD
-=======
     def test_sequence_builders(self):
         tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
@@ -138,7 +136,6 @@ class BertTokenizationTest(CommonTestCases.CommonTokenizerTester):
 
         assert encoded_sentence == [101] + text + [102]
         assert encoded_pair == [101] + text + [102] + text_2 + [102]
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 
 if __name__ == '__main__':
     unittest.main()

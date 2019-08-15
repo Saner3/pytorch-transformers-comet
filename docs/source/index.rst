@@ -47,7 +47,4 @@ The library currently contains PyTorch implementations, pre-trained model weight
     model_doc/gpt2
     model_doc/xlm
     model_doc/xlnet
-<<<<<<< HEAD
-=======
     model_doc/roberta
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47

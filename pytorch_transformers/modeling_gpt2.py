@@ -50,11 +50,7 @@ def load_tf_weights_in_gpt2(model, config, gpt2_checkpoint_path):
         import numpy as np
         import tensorflow as tf
     except ImportError:
-<<<<<<< HEAD
-        logger.error("Loading a TensorFlow models in PyTorch, requires TensorFlow to be installed. Please see "
-=======
         logger.error("Loading a TensorFlow model in PyTorch, requires TensorFlow to be installed. Please see "
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
             "https://www.tensorflow.org/install/ for installation instructions.")
         raise
     tf_path = os.path.abspath(gpt2_checkpoint_path)
@@ -252,22 +248,15 @@ class Attention(nn.Module):
         self.split_size = (self.split_size // self.n_head) * (self.n_head - len(heads))
         self.n_head = self.n_head - len(heads)
 
-<<<<<<< HEAD
     def _attn(self, q, k, v, input_mask=None, head_mask=None):
-=======
-    def _attn(self, q, k, v, head_mask=None):
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         w = torch.matmul(q, k)
         if self.scale:
             w = w / math.sqrt(v.size(-1))
         nd, ns = w.size(-2), w.size(-1)
         b = self.bias[:, :, ns-nd:ns, :ns]
-<<<<<<< HEAD
         if input_mask is not None:
             b = b * (1 - input_mask.view(input_mask.size(0), 1, -1))
             b = b.permute(1,0,2,3)
-=======
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         w = w * b - 1e4 * (1 - b)
 
         w = nn.Softmax(dim=-1)(w)
@@ -295,11 +284,7 @@ class Attention(nn.Module):
         else:
             return x.permute(0, 2, 1, 3)  # (batch, head, seq_length, head_features)
 
-<<<<<<< HEAD
     def forward(self, x, layer_past=None, input_mask=None, head_mask=None):
-=======
-    def forward(self, x, layer_past=None, head_mask=None):
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         x = self.c_attn(x)
         query, key, value = x.split(self.split_size, dim=2)
         query = self.split_heads(query)
@@ -311,11 +296,7 @@ class Attention(nn.Module):
             value = torch.cat((past_value, value), dim=-2)
         present = torch.stack((key.transpose(-2, -1), value))  # transpose to have same shapes for stacking
 
-<<<<<<< HEAD
         attn_outputs = self._attn(query, key, value, input_mask, head_mask)
-=======
-        attn_outputs = self._attn(query, key, value, head_mask)
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         a = attn_outputs[0]
 
         a = self.merge_heads(a)
@@ -350,13 +331,8 @@ class Block(nn.Module):
         self.ln_2 = LayerNorm(nx, eps=config.layer_norm_epsilon)
         self.mlp = MLP(4 * nx, config)
 
-<<<<<<< HEAD
     def forward(self, x, layer_past=None, input_mask=None, head_mask=None):
         output_attn = self.attn(self.ln_1(x), layer_past=layer_past, input_mask=input_mask, head_mask=head_mask)
-=======
-    def forward(self, x, layer_past=None, head_mask=None):
-        output_attn = self.attn(self.ln_1(x), layer_past=layer_past, head_mask=head_mask)
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         a = output_attn[0]  # output_attn: a, present, (attentions)
 
         x = x + a
@@ -420,11 +396,7 @@ GPT2_INPUTS_DOCSTRING = r"""    Inputs:
             :func:`pytorch_transformers.PreTrainedTokenizer.convert_tokens_to_ids` for details.
         **position_ids**: (`optional`) ``torch.LongTensor`` of shape ``(batch_size, sequence_length)``:
             Indices of positions of each input sequence tokens in the position embeddings.
-<<<<<<< HEAD
-            Selected in the range ``[0, config.max_position_embeddings - 1[``.
-=======
             Selected in the range ``[0, config.max_position_embeddings - 1]``.
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         **token_type_ids**: (`optional`) ``torch.LongTensor`` of shape ``(batch_size, sequence_length)``:
             A parallel sequence of tokens (can be used to indicate various portions of the inputs).
             The embeddings from these tokens will be summed with the respective token embeddings.
@@ -464,14 +436,8 @@ class GPT2Model(GPT2PreTrainedModel):
 
     Examples::
 
-<<<<<<< HEAD
-        config = GPT2Config.from_pretrained('gpt2')
-        tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-        model = GPT2Model(config)
-=======
         tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
         model = GPT2Model.from_pretrained('gpt2')
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
         outputs = model(input_ids)
         last_hidden_states = outputs[0]  # The last hidden-state is the first element of the output tuple
@@ -501,11 +467,7 @@ class GPT2Model(GPT2PreTrainedModel):
         for layer, heads in heads_to_prune.items():
             self.h[layer].attn.prune_heads(heads)
 
-<<<<<<< HEAD
     def forward(self, input_ids, position_ids=None, token_type_ids=None, past=None, input_mask=None, head_mask=None):
-=======
-    def forward(self, input_ids, position_ids=None, token_type_ids=None, past=None, head_mask=None):
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         if past is None:
             past_length = 0
             past = [None] * len(self.h)
@@ -552,11 +514,7 @@ class GPT2Model(GPT2PreTrainedModel):
             if self.output_hidden_states:
                 all_hidden_states = all_hidden_states + (hidden_states.view(*output_shape),)
 
-<<<<<<< HEAD
             outputs = block(hidden_states, layer_past, input_mask, head_mask[i])
-=======
-            outputs = block(hidden_states, layer_past, head_mask[i])
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
             hidden_states, present = outputs[:2]
             presents = presents + (present,)
 
@@ -611,14 +569,8 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
 
     Examples::
 
-<<<<<<< HEAD
-        config = GPT2Config.from_pretrained('gpt2')
-        tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-        model = GPT2LMHeadModel(config)
-=======
         tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
         model = GPT2LMHeadModel.from_pretrained('gpt2')
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
         outputs = model(input_ids, labels=input_ids)
         loss, logits = outputs[:2]
@@ -639,15 +591,9 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
         self._tie_or_clone_weights(self.lm_head,
                                    self.transformer.wte)
 
-<<<<<<< HEAD
     def forward(self, input_ids, position_ids=None, token_type_ids=None, labels=None, past=None, input_mask=None, head_mask=None):
         transformer_outputs = self.transformer(input_ids, position_ids=position_ids, token_type_ids=token_type_ids,
                                                past=past, input_mask=input_mask, head_mask=head_mask)
-=======
-    def forward(self, input_ids, position_ids=None, token_type_ids=None, labels=None, past=None, head_mask=None):
-        transformer_outputs = self.transformer(input_ids, position_ids=position_ids, token_type_ids=token_type_ids,
-                                               past=past, head_mask=head_mask)
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         hidden_states = transformer_outputs[0]
 
         lm_logits = self.lm_head(hidden_states)
@@ -684,11 +630,7 @@ class GPT2DoubleHeadsModel(GPT2PreTrainedModel):
             Selected in the range ``[0, input_ids.size(-1) - 1[``.
         **position_ids**: (`optional`) ``torch.LongTensor`` of shape ``(batch_size, num_choices, sequence_length)``:
             Indices of positions of each input sequence tokens in the position embeddings.
-<<<<<<< HEAD
-            Selected in the range ``[0, config.max_position_embeddings - 1[``.
-=======
             Selected in the range ``[0, config.max_position_embeddings - 1]``.
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         **token_type_ids**: (`optional`) ``torch.LongTensor`` of shape ``(batch_size, num_choices, sequence_length)``:
             A parallel sequence of tokens (can be used to indicate various portions of the inputs).
             The embeddings from these tokens will be summed with the respective token embeddings.
@@ -742,21 +684,12 @@ class GPT2DoubleHeadsModel(GPT2PreTrainedModel):
 
     Examples::
 
-<<<<<<< HEAD
-        config = GPT2Config.from_pretrained('gpt2')
-        tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-        model = GPT2DoubleHeadsModel(config)
-        choices = ["Hello, my dog is cute [CLS]", "Hello, my cat is cute [CLS]"]  # Assume you've added [CLS] to the vocabulary
-        input_ids = torch.tensor([tokenizer.encode(s) for s in choices]).unsqueeze(0)  # Batch size 1, 2 choices
-        mc_token_ids = torch.tensor([-1, -1]).unsqueeze(0)  # Batch size 1
-=======
         tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
         model = GPT2DoubleHeadsModel.from_pretrained('gpt2')
         tokenizer.add_special_tokens({'cls_token': '[CLS]'})  # Add a [CLS] to the vocabulary (we should train it also!)
         choices = ["Hello, my dog is cute [CLS]", "Hello, my cat is cute [CLS]"]
         input_ids = torch.tensor([tokenizer.encode(s) for s in choices]).unsqueeze(0)  # Batch size 1, 2 choices
         mc_token_ids = torch.tensor([input_ids.size(-1), input_ids.size(-1)]).unsqueeze(0)  # Batch size 1
->>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         outputs = model(input_ids, mc_token_ids)
         lm_prediction_scores, mc_prediction_scores = outputs[:2]
 
