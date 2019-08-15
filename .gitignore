@@ -1,6 +1,10 @@
+<<<<<<< HEAD
 examples/ckbc_demo/*.pickle
 examples/models/*
 examples/outputs/*
+=======
+# Initially taken from Github's Python gitignore file
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -24,8 +28,11 @@ parts/
 sdist/
 var/
 wheels/
+<<<<<<< HEAD
 pip-wheel-metadata/
 share/python-wheels/
+=======
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 *.egg-info/
 .installed.cfg
 *.egg
@@ -62,7 +69,10 @@ coverage.xml
 *.log
 local_settings.py
 db.sqlite3
+<<<<<<< HEAD
 db.sqlite3-journal
+=======
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 
 # Flask stuff:
 instance/
@@ -87,6 +97,7 @@ ipython_config.py
 # pyenv
 .python-version
 
+<<<<<<< HEAD
 # pipenv
 #   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
 #   However, in case of collaboration, if having platform-specific dependencies or dependencies
@@ -94,6 +105,8 @@ ipython_config.py
 #   install all needed dependencies.
 #Pipfile.lock
 
+=======
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 # celery beat schedule file
 celerybeat-schedule
 
@@ -126,3 +139,20 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+<<<<<<< HEAD
+=======
+
+# vscode
+.vscode
+
+# TF code
+tensorflow_code
+
+# Models
+models
+proc_data
+
+# examples
+runs
+examples/runs
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47

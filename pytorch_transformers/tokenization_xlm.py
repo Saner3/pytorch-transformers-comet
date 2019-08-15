@@ -214,6 +214,25 @@ class XLMTokenizer(PreTrainedTokenizer):
         out_string = ''.join(tokens).replace('</w>', ' ').strip()
         return out_string
 
+<<<<<<< HEAD
+=======
+    def add_special_tokens_single_sentence(self, token_ids):
+        """
+        Adds special tokens to a sequence for sequence classification tasks.
+        An XLM sequence has the following format: [CLS] X [SEP]
+        """
+        return [self._convert_token_to_id(self.cls_token)] + token_ids + [self._convert_token_to_id(self.sep_token)]
+
+    def add_special_tokens_sentences_pair(self, token_ids_0, token_ids_1):
+        """
+        Adds special tokens to a sequence pair for sequence classification tasks.
+        An XLM sequence pair has the following format: [CLS] A [SEP] B [SEP]
+        """
+        sep = [self._convert_token_to_id(self.sep_token)]
+        cls = [self._convert_token_to_id(self.cls_token)]
+        return cls + token_ids_0 + sep + token_ids_1 + sep
+
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
     def save_vocabulary(self, save_directory):
         """Save the tokenizer vocabulary and merge files to a directory."""
         if not os.path.isdir(save_directory):

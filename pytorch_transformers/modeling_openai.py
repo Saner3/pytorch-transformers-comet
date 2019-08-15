@@ -266,17 +266,24 @@ class Attention(nn.Module):
         self.split_size = (self.split_size // self.n_head) * (self.n_head - len(heads))
         self.n_head = self.n_head - len(heads)
 
+<<<<<<< HEAD
     def _attn(self, q, k, v, input_mask=None, head_mask=None):
+=======
+    def _attn(self, q, k, v, head_mask=None):
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         w = torch.matmul(q, k)
         if self.scale:
             w = w / math.sqrt(v.size(-1))
         # w = w * self.bias + -1e9 * (1 - self.bias)  # TF implem method: mask_attn_weights
         # XD: self.b may be larger than w, so we need to crop it
         b = self.bias[:, :, : w.size(-2), : w.size(-1)]
+<<<<<<< HEAD
         if input_mask is not None:
             b = b * (1 - input_mask.view(input_mask.size(0), 1, -1))
             #b = b * input_mask.view(input_mask.size(0), 1, -1)
             b = b.permute(1,0,2,3)
+=======
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         w = w * b + -1e9 * (1 - b)
 
         w = nn.Softmax(dim=-1)(w)
@@ -304,14 +311,22 @@ class Attention(nn.Module):
         else:
             return x.permute(0, 2, 1, 3)
 
+<<<<<<< HEAD
     def forward(self, x, input_mask=None, head_mask=None):
+=======
+    def forward(self, x, head_mask=None):
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         x = self.c_attn(x)
         query, key, value = x.split(self.split_size, dim=2)
         query = self.split_heads(query)
         key = self.split_heads(key, k=True)
         value = self.split_heads(value)
 
+<<<<<<< HEAD
         attn_outputs = self._attn(query, key, value, input_mask, head_mask)
+=======
+        attn_outputs = self._attn(query, key, value, head_mask)
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         a = attn_outputs[0]
 
         a = self.merge_heads(a)
@@ -346,8 +361,13 @@ class Block(nn.Module):
         self.mlp = MLP(4 * nx, config)
         self.ln_2 = LayerNorm(nx, eps=config.layer_norm_epsilon)
 
+<<<<<<< HEAD
     def forward(self, x, head_mask=None, input_mask=None):
         attn_outputs = self.attn(x, head_mask=head_mask, input_mask=input_mask)
+=======
+    def forward(self, x, head_mask=None):
+        attn_outputs = self.attn(x, head_mask=head_mask)
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         a = attn_outputs[0]
 
         n = self.ln_1(x + a)
@@ -411,7 +431,11 @@ OPENAI_GPT_INPUTS_DOCSTRING = r"""    Inputs:
             :func:`pytorch_transformers.PreTrainedTokenizer.convert_tokens_to_ids` for details.
         **position_ids**: (`optional`) ``torch.LongTensor`` of shape ``(batch_size, sequence_length)``:
             Indices of positions of each input sequence tokens in the position embeddings.
+<<<<<<< HEAD
             Selected in the range ``[0, config.max_position_embeddings - 1[``.
+=======
+            Selected in the range ``[0, config.max_position_embeddings - 1]``.
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         **token_type_ids**: (`optional`) ``torch.LongTensor`` of shape ``(batch_size, sequence_length)``:
             A parallel sequence of tokens (can be used to indicate various portions of the inputs).
             The embeddings from these tokens will be summed with the respective token embeddings.
@@ -443,9 +467,14 @@ class OpenAIGPTModel(OpenAIGPTPreTrainedModel):
 
     Examples::
 
+<<<<<<< HEAD
         config = OpenAIGPTConfig.from_pretrained('openai-gpt')
         tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
         model = OpenAIGPTModel(config)
+=======
+        tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
+        model = OpenAIGPTModel.from_pretrained('openai-gpt')
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
         outputs = model(input_ids)
         last_hidden_states = outputs[0]  # The last hidden-state is the first element of the output tuple
@@ -474,7 +503,11 @@ class OpenAIGPTModel(OpenAIGPTPreTrainedModel):
         for layer, heads in heads_to_prune.items():
             self.h[layer].attn.prune_heads(heads)
 
+<<<<<<< HEAD
     def forward(self, input_ids, position_ids=None, token_type_ids=None, input_mask=None, head_mask=None):
+=======
+    def forward(self, input_ids, position_ids=None, token_type_ids=None, head_mask=None):
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         if position_ids is None:
             # This was used when we had a single embedding matrice from position and token embeddings
             # start = self.config.vocab_size + self.config.n_special
@@ -519,7 +552,11 @@ class OpenAIGPTModel(OpenAIGPTPreTrainedModel):
             if self.output_hidden_states:
                 all_hidden_states = all_hidden_states + (hidden_states.view(*output_shape),)
 
+<<<<<<< HEAD
             outputs = block(hidden_states, input_mask=input_mask, head_mask=head_mask[i])
+=======
+            outputs = block(hidden_states, head_mask[i])
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
             hidden_states = outputs[0]
             if self.output_attentions:
                 all_attentions = all_attentions + (outputs[1],)
@@ -562,9 +599,14 @@ class OpenAIGPTLMHeadModel(OpenAIGPTPreTrainedModel):
 
     Examples::
 
+<<<<<<< HEAD
         config = OpenAIGPTConfig.from_pretrained('openai-gpt')
         tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
         model = OpenAIGPTLMHeadModel(config)
+=======
+        tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
+        model = OpenAIGPTLMHeadModel.from_pretrained('openai-gpt')
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
         outputs = model(input_ids, labels=input_ids)
         loss, logits = outputs[:2]
@@ -585,8 +627,14 @@ class OpenAIGPTLMHeadModel(OpenAIGPTPreTrainedModel):
         self._tie_or_clone_weights(self.lm_head,
                                    self.transformer.tokens_embed)
 
+<<<<<<< HEAD
     def forward(self, input_ids, position_ids=None, token_type_ids=None, labels=None, input_mask=None, head_mask=None):
         transformer_outputs = self.transformer(input_ids, position_ids=position_ids, token_type_ids=token_type_ids, input_mask=input_mask, head_mask=head_mask)
+=======
+    def forward(self, input_ids, position_ids=None, token_type_ids=None, labels=None, head_mask=None):
+        transformer_outputs = self.transformer(input_ids, position_ids=position_ids, token_type_ids=token_type_ids,
+                                               head_mask=head_mask)
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         hidden_states = transformer_outputs[0]
         lm_logits = self.lm_head(hidden_states)
 
@@ -603,6 +651,10 @@ class OpenAIGPTLMHeadModel(OpenAIGPTPreTrainedModel):
 
         return outputs  # (loss), lm_logits, (all hidden states), (all attentions)
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 @add_start_docstrings("""OpenAI GPT Model transformer with a language modeling and a multiple-choice classification
 head on top e.g. for RocStories/SWAG tasks. The two heads are two linear layers.
 The language modeling head has its weights tied to the input embeddings,
@@ -621,7 +673,11 @@ class OpenAIGPTDoubleHeadsModel(OpenAIGPTPreTrainedModel):
             Selected in the range ``[0, input_ids.size(-1) - 1[``.
         **position_ids**: (`optional`) ``torch.LongTensor`` of shape ``(batch_size, num_choices, sequence_length)``:
             Indices of positions of each input sequence tokens in the position embeddings.
+<<<<<<< HEAD
             Selected in the range ``[0, config.max_position_embeddings - 1[``.
+=======
+            Selected in the range ``[0, config.max_position_embeddings - 1]``.
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
         **token_type_ids**: (`optional`) ``torch.LongTensor`` of shape ``(batch_size, num_choices, sequence_length)``:
             A parallel sequence of tokens (can be used to indicate various portions of the inputs).
             The embeddings from these tokens will be summed with the respective token embeddings.
@@ -667,6 +723,7 @@ class OpenAIGPTDoubleHeadsModel(OpenAIGPTPreTrainedModel):
 
     Examples::
 
+<<<<<<< HEAD
         config = OpenAIGPTConfig.from_pretrained('openai-gpt')
         tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
         model = OpenAIGPTDoubleHeadsModel(config)
@@ -675,6 +732,17 @@ class OpenAIGPTDoubleHeadsModel(OpenAIGPTPreTrainedModel):
         mc_token_ids = torch.tensor([-1, -1]).unsqueeze(0)  # Batch size 1
         outputs = model(input_ids, mc_token_ids)
         lm_prediction_scores, mc_prediction_scores = outputs[:2]
+=======
+        tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
+        model = OpenAIGPTDoubleHeadsModel.from_pretrained('openai-gpt')
+        tokenizer.add_special_tokens({'cls_token': '[CLS]'})  # Add a [CLS] to the vocabulary (we should train it also!)
+        choices = ["Hello, my dog is cute [CLS]", "Hello, my cat is cute [CLS]"]
+        input_ids = torch.tensor([tokenizer.encode(s) for s in choices]).unsqueeze(0)  # Batch size 1, 2 choices
+        mc_token_ids = torch.tensor([input_ids.size(-1), input_ids.size(-1)]).unsqueeze(0)  # Batch size 1
+        outputs = model(input_ids, mc_token_ids)
+        lm_prediction_scores, mc_prediction_scores = outputs[:2]
+
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
     """
     def __init__(self, config):
         super(OpenAIGPTDoubleHeadsModel, self).__init__(config)

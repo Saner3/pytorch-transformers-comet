@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 __version__ = "1.0.0"
+=======
+__version__ = "1.1.0"
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 from .tokenization_auto import AutoTokenizer
 from .tokenization_bert import BertTokenizer, BasicTokenizer, WordpieceTokenizer
 from .tokenization_openai import OpenAIGPTTokenizer
@@ -6,6 +10,11 @@ from .tokenization_transfo_xl import (TransfoXLTokenizer, TransfoXLCorpus)
 from .tokenization_gpt2 import GPT2Tokenizer
 from .tokenization_xlnet import XLNetTokenizer, SPIECE_UNDERLINE
 from .tokenization_xlm import XLMTokenizer
+<<<<<<< HEAD
+=======
+from .tokenization_roberta import RobertaTokenizer
+
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 from .tokenization_utils import (PreTrainedTokenizer)
 
 from .modeling_auto import (AutoConfig, AutoModel)
@@ -36,7 +45,13 @@ from .modeling_xlm import (XLMConfig, XLMPreTrainedModel , XLMModel,
                            XLMWithLMHeadModel, XLMForSequenceClassification,
                            XLMForQuestionAnswering, XLM_PRETRAINED_CONFIG_ARCHIVE_MAP,
                            XLM_PRETRAINED_MODEL_ARCHIVE_MAP)
+<<<<<<< HEAD
 from .modeling_utils import (WEIGHTS_NAME, CONFIG_NAME, TF_WEIGHTS_NAME, SequenceSummary,
+=======
+from .modeling_roberta import (RobertaConfig, RobertaForMaskedLM, RobertaModel, RobertaForSequenceClassification,
+                               ROBERTA_PRETRAINED_CONFIG_ARCHIVE_MAP, ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP)
+from .modeling_utils import (WEIGHTS_NAME, CONFIG_NAME, TF_WEIGHTS_NAME,
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
                           PretrainedConfig, PreTrainedModel, prune_layer, Conv1D)
 
 from .optimization import (AdamW, ConstantLRSchedule, WarmupConstantSchedule, WarmupCosineSchedule,

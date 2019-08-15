@@ -29,6 +29,10 @@ from .modeling_gpt2 import GPT2Config, GPT2Model
 from .modeling_transfo_xl import TransfoXLConfig, TransfoXLModel
 from .modeling_xlnet import XLNetConfig, XLNetModel
 from .modeling_xlm import XLMConfig, XLMModel
+<<<<<<< HEAD
+=======
+from .modeling_roberta import RobertaConfig, RobertaModel
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 
 from .modeling_utils import PreTrainedModel, SequenceSummary
 
@@ -51,6 +55,10 @@ class AutoConfig(object):
             - contains `transfo-xl`: TransfoXLConfig (Transformer-XL model)
             - contains `xlnet`: XLNetConfig (XLNet model)
             - contains `xlm`: XLMConfig (XLM model)
+<<<<<<< HEAD
+=======
+            - contains `roberta`: RobertaConfig (RoBERTa model)
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 
         This class cannot be instantiated using `__init__()` (throw an error).
     """
@@ -71,6 +79,10 @@ class AutoConfig(object):
             - contains `transfo-xl`: TransfoXLConfig (Transformer-XL model)
             - contains `xlnet`: XLNetConfig (XLNet model)
             - contains `xlm`: XLMConfig (XLM model)
+<<<<<<< HEAD
+=======
+            - contains `roberta`: RobertaConfig (RoBERTa model)
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 
         Params:
             **pretrained_model_name_or_path**: either:
@@ -119,6 +131,11 @@ class AutoConfig(object):
             return XLNetConfig.from_pretrained(pretrained_model_name_or_path, **kwargs)
         elif 'xlm' in pretrained_model_name_or_path:
             return XLMConfig.from_pretrained(pretrained_model_name_or_path, **kwargs)
+<<<<<<< HEAD
+=======
+        elif 'roberta' in pretrained_model_name_or_path:
+            return RobertaConfig.from_pretrained(pretrained_model_name_or_path, **kwargs)
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 
         raise ValueError("Unrecognized model identifier in {}. Should contains one of "
                          "'bert', 'openai-gpt', 'gpt2', 'transfo-xl', 'xlnet', "
@@ -137,12 +154,22 @@ class AutoModel(object):
 
         The base model class to instantiate is selected as the first pattern matching
         in the `pretrained_model_name_or_path` string (in the following order):
+<<<<<<< HEAD
             - contains `bert`: BertConfig (Bert model)
             - contains `openai-gpt`: OpenAIGPTConfig (OpenAI GPT model)
             - contains `gpt2`: GPT2Config (OpenAI GPT-2 model)
             - contains `transfo-xl`: TransfoXLConfig (Transformer-XL model)
             - contains `xlnet`: XLNetConfig (XLNet model)
             - contains `xlm`: XLMConfig (XLM model)
+=======
+            - contains `bert`: BertModel (Bert model)
+            - contains `openai-gpt`: OpenAIGPTModel (OpenAI GPT model)
+            - contains `gpt2`: GPT2Model (OpenAI GPT-2 model)
+            - contains `transfo-xl`: TransfoXLModel (Transformer-XL model)
+            - contains `xlnet`: XLNetModel (XLNet model)
+            - contains `xlm`: XLMModel (XLM model)
+            - contains `roberta`: RobertaModel (RoBERTa model)
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 
         This class cannot be instantiated using `__init__()` (throw an error).
     """
@@ -157,12 +184,22 @@ class AutoModel(object):
 
         The base model class to instantiate is selected as the first pattern matching
         in the `pretrained_model_name_or_path` string (in the following order):
+<<<<<<< HEAD
             - contains `bert`: BertConfig (Bert model)
             - contains `openai-gpt`: OpenAIGPTConfig (OpenAI GPT model)
             - contains `gpt2`: GPT2Config (OpenAI GPT-2 model)
             - contains `transfo-xl`: TransfoXLConfig (Transformer-XL model)
             - contains `xlnet`: XLNetConfig (XLNet model)
             - contains `xlm`: XLMConfig (XLM model)
+=======
+            - contains `bert`: BertModel (Bert model)
+            - contains `openai-gpt`: OpenAIGPTModel (OpenAI GPT model)
+            - contains `gpt2`: GPT2Model (OpenAI GPT-2 model)
+            - contains `transfo-xl`: TransfoXLModel (Transformer-XL model)
+            - contains `xlnet`: XLNetModel (XLNet model)
+            - contains `xlm`: XLMModel (XLM model)
+            - contains `roberta`: RobertaModel (RoBERTa model)
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 
             The model is set in evaluation mode by default using `model.eval()` (Dropout modules are deactivated)
             To train the model, you should first set it back in training mode with `model.train()`
@@ -230,6 +267,11 @@ class AutoModel(object):
             return XLNetModel.from_pretrained(pretrained_model_name_or_path, *model_args, **kwargs)
         elif 'xlm' in pretrained_model_name_or_path:
             return XLMModel.from_pretrained(pretrained_model_name_or_path, *model_args, **kwargs)
+<<<<<<< HEAD
+=======
+        elif 'roberta' in pretrained_model_name_or_path:
+            return RobertaModel.from_pretrained(pretrained_model_name_or_path, *model_args, **kwargs)
+>>>>>>> e24e19ce3bbbc3fe317e4d277b919cd1cb31fc47
 
         raise ValueError("Unrecognized model identifier in {}. Should contains one of "
                          "'bert', 'openai-gpt', 'gpt2', 'transfo-xl', 'xlnet', "
