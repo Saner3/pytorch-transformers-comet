@@ -220,7 +220,7 @@ def main():
     end_token = tokenizer.eos_token
     # Load and encode the datasets
 
-    test_dataset = load_comet_dataset(args.test_dataset, end_token)
+    test_dataset = load_comet_dataset(args.test_dataset, end_token, rel_lang=args.rel_lang)
     encoded_datasets = tokenize_and_encode([test_dataset], tokenizer)
     encoded_paddings = tokenize_and_encode(PADDING_TEXT, tokenizer) if args.padding_text else []
     padding_length = len(encoded_paddings)

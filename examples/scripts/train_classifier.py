@@ -15,7 +15,7 @@ from pytorch_transformers import (CONFIG_NAME, WEIGHTS_NAME, AdamW, GPT2Config,
                                   GPT2Model, GPT2PreTrainedModel,
                                   GPT2Tokenizer, OpenAIGPTConfig,
                                   OpenAIGPTModel, OpenAIGPTPreTrainedModel,
-                                  OpenAIGPTTokenizer, SequenceSummary,
+                                  XLNetModel, XLNetPreTrainedModel, XLNetConfig,
                                   WarmupLinearSchedule, cached_path)
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
                               TensorDataset)
@@ -27,31 +27,30 @@ logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(messa
 logger = logging.getLogger(__name__)
 
 class OpenAIGPTCLFModel(OpenAIGPTPreTrainedModel):
-    def __init__(self, model, config):#, num_features, dropout, num_labels):
+    def __init__(self, model, config):
         super(OpenAIGPTCLFModel, self).__init__(config)
         self.transformer = model
         self.clf_head = SequenceSummary(config)
-        # n_hid = 768
-        # self.clf_head = nn.Sequential(
-        #     nn.Dropout(0.1),
-        #     nn.Linear(num_features, n_hid),
-        #     nn.ReLU(),
-        #     #nn.BatchNorm1d(n_hid),
-        #     nn.Dropout(dropout),            
-        #     nn.Linear(n_hid, n_hid // 4),
-        #     nn.ReLU(),
-        #     #nn.BatchNorm1d(n_hid // 4),
-        #     nn.Dropout(dropout),
-        #     nn.Linear(n_hid // 4, num_labels),
-        # )
     def forward(self, x, input_mask=None, mc_token_ids=None, mc_labels=None):
         h = self.transformer(x, input_mask=input_mask)[0]
-        # cls_index = torch.full_like(h[..., :1, :], 
-        #                         h.shape[-2]-1, dtype=torch.long)
-        # # shape of cls_index: (bsz, XX, 1, hidden_size) where XX are optional leading dim of hidden_states
-        # h = h.gather(-2, cls_index).squeeze(-2) # shape (bsz, XX, hidden_size)
         logits = self.clf_head(h, mc_token_ids)
-        #logits = self.clf_head(h)
+        if mc_labels is not None:
+            loss_fct = torch.nn.CrossEntropyLoss()
+            loss = loss_fct(logits.view(-1, logits.size(-1)),
+                            mc_labels.view(-1))
+            predicts = logits.argmax(-1)
+            return loss, logits, predicts
+        else:
+            return logits
+
+class XLNetCLFModel(XLNetPreTrainedModel):
+    def __init__(self, model, config):
+        super(XLNetCLFModel, self).__init__(config)
+        self.transformer = model
+        self.clf_head = SequenceSummary(config)
+    def forward(self, x, input_mask=None, mc_token_ids=None, mc_labels=None):
+        h = self.transformer(x, input_mask=input_mask)[0]
+        logits = self.clf_head(h, mc_token_ids)
         if mc_labels is not None:
             loss_fct = torch.nn.CrossEntropyLoss()
             loss = loss_fct(logits.view(-1, logits.size(-1)),
@@ -191,22 +190,36 @@ def main():
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
+    # select model type
+    if args.model_type == "openai-gpt":
+        Tokenizer = OpenAIGPTTokenizer
+        Model = OpenAIGPTModel
+        Config = OpenAIGPTConfig
+    elif args.model_type == "gpt2":
+        Tokenizer = GPT2Tokenizer
+        Model = GPT2Model
+        Config = GPT2Config
+    elif args.model_type == "xlnet":
+        pass
+    else:
+        exit()
+
     # Load tokenizer and model
-    tokenizer = OpenAIGPTTokenizer.from_pretrained(args.model_name_or_path)
-    model = OpenAIGPTModel.from_pretrained(args.model_name_or_path)
-    if args.model_type == "openai-gpt" or args.model_type == "gpt2":
+    tokenizer = Tokenizer.from_pretrained(args.model_name_or_path)
+    model = Model.from_pretrained(args.model_name_or_path)
+    if args.model_name_or_type == "openai-gpt" or args.model_name_or_type == "gpt2":
         tokenizer.add_special_tokens({"bos_token": "<bos>", 
                                     "eos_token": "<eos>",
                                     "unk_token": "<unk>"})
     print("vocab size:", len(tokenizer))
 
-    config = OpenAIGPTConfig.from_pretrained(args.model_name_or_path)
+    config = Config.from_pretrained(args.model_name_or_path)
     # change config
     config.num_labels = 2
     config.summary_type = "cls_index"
     config.summary_proj_to_labels=True
     config.summary_first_dropout=0.1
-    model = OpenAIGPTCLFModel(model, config=config)
+    model = Model(model, config=config)
     model.resize_token_embeddings(len(tokenizer))
     print(model.config)
     model.to(device)
@@ -222,6 +235,7 @@ def main():
     test_dataset2 = load_comet_dataset(args.test_dataset, end_token, toy=args.toy, rel_lang=args.rel_lang, discard_negative=False)
 
     datasets = (train_dataset, eval_dataset, test_dataset1, test_dataset2)
+    print("encoding datasets ...")
     encoded_datasets = tokenize_and_encode(datasets, tokenizer)
     max_e1 = 10
     max_r = 5

@@ -143,6 +143,7 @@ def main():
     parser.add_argument('--model_name_or_path', type=str, default='openai-gpt', help="pretrained model path")              
     parser.add_argument("--rel_lang", action='store_true', help="Use natural language to represent relations.")
     parser.add_argument("--do_train", action='store_true', help="do training")
+    parser.add_argument("--predict_relation", action='store_true', help="predict relation rather than objects")
     parser.add_argument("--toy", action='store_true', help="test code")
     parser.add_argument("--padding_text", action='store_true', help="xlnet needs a padding text")
     parser.add_argument("--output_dir", default=None, type=str, required=True,

@@ -18,6 +18,7 @@ cd examples
 python scripts/comet-train.py --output_dir SOME_DIR --do_train --rel_lang --model_type openai-gpt/gpt2/xlnet --model_name_or_path openai-gpt/gpt2/xlnet-large-cased --train_batch_size 32
 ```
 add `--no_pretrain` argument to train from scratch
+`--rel_lang` is used to translate relations from special tokens to natural language like ones, such as "HasProperty -> has property", if using other datasets, may not add this argument (same as the following scripts).
 
 ## Evaluating
 
