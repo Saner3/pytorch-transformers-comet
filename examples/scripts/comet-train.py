@@ -143,6 +143,7 @@ def main():
     parser.add_argument('--model_name_or_path', type=str, default='openai-gpt', help="pretrained model path")              
     parser.add_argument("--rel_lang", action='store_true', help="Use natural language to represent relations.")
     parser.add_argument("--do_train", action='store_true', help="do training")
+    parser.add_argument("--do_eval", action='store_true', help="do evaluation")
     parser.add_argument("--predict_relation", action='store_true', help="predict relation rather than objects")
     parser.add_argument("--toy", action='store_true', help="test code")
     parser.add_argument("--padding_text", action='store_true', help="xlnet needs a padding text")
@@ -319,6 +320,15 @@ def main():
                     test_loss = evaluate(model, test_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding).item()
                     print("\n\ntesting\ntest loss:", test_loss, "ppl:", np.exp(test_loss) if test_loss < 300 else np.inf)
                     model.train()
+    if args.do_eval:
+        model.eval()
+        # evaluate
+        eval_loss = evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding).item()
+        print("\n\nevaluating\neval loss:", eval_loss, "ppl", np.exp(eval_loss) if eval_loss < 300 else np.inf)
+        # test
+        test_loss = evaluate(model, test_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding).item()
+        print("\n\ntesting\ntest loss:", test_loss, "ppl:", np.exp(test_loss) if test_loss < 300 else np.inf)
+
 
 
 if __name__ == '__main__':

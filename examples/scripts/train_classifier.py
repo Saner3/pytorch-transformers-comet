@@ -15,6 +15,7 @@ from pytorch_transformers import (CONFIG_NAME, WEIGHTS_NAME, AdamW, GPT2Config,
                                   GPT2Model, GPT2PreTrainedModel,
                                   GPT2Tokenizer, OpenAIGPTConfig,
                                   OpenAIGPTModel, OpenAIGPTPreTrainedModel,
+                                  OpenAIGPTTokenizer, SequenceSummary,
                                   XLNetModel, XLNetPreTrainedModel, XLNetConfig,
                                   WarmupLinearSchedule, cached_path)
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
@@ -207,7 +208,7 @@ def main():
     # Load tokenizer and model
     tokenizer = Tokenizer.from_pretrained(args.model_name_or_path)
     model = Model.from_pretrained(args.model_name_or_path)
-    if args.model_name_or_type == "openai-gpt" or args.model_name_or_type == "gpt2":
+    if args.model_name_or_path == "openai-gpt" or args.model_name_or_path == "gpt2":
         tokenizer.add_special_tokens({"bos_token": "<bos>", 
                                     "eos_token": "<eos>",
                                     "unk_token": "<unk>"})
@@ -219,7 +220,7 @@ def main():
     config.summary_type = "cls_index"
     config.summary_proj_to_labels=True
     config.summary_first_dropout=0.1
-    model = Model(model, config=config)
+    model = OpenAIGPTCLFModel(model, config=config)
     model.resize_token_embeddings(len(tokenizer))
     print(model.config)
     model.to(device)
