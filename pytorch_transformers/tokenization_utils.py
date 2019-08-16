@@ -25,7 +25,7 @@ from io import open
 from .file_utils import cached_path
 
 logger = logging.getLogger(__name__)
-
+logger.setLevel(level=logging.CRITICAL)
 SPECIAL_TOKENS_MAP_FILE = 'special_tokens_map.json'
 ADDED_TOKENS_FILE = 'added_tokens.json'
 

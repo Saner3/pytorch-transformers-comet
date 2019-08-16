@@ -32,7 +32,7 @@ from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
                               TensorDataset)
 from tqdm import tqdm, trange
 import torch.nn.functional as F
-from utils import (load_comet_dataset, save_model, tokenize_and_encode, set_seed, PADDING_TEXT)
+from scripts.utils import (load_comet_dataset, save_model, tokenize_and_encode, set_seed, PADDING_TEXT)
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
@@ -69,8 +69,10 @@ def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2, pad
 
 
         lm_labels = np.copy(input_ids)
-        lm_labels[lm_labels == 0] = -1  # do not calculate loss on paddings
-        lm_labels[:, :max_e1+max_r] = -1    # do not calculate loss on the first part
+        # do not calculate loss on paddings
+        lm_labels[lm_labels == 0] = -1  
+        # do not calculate loss on e1/r
+        lm_labels[:, :max_e1 + max_r + padding_length] = -1    
         input_mask = (input_ids == 0)   # attention mask
         all_inputs = (input_ids, lm_labels, input_mask)
         tensor_datasets.append((torch.tensor(input_ids), torch.tensor(lm_labels), 
@@ -287,7 +289,7 @@ def main():
                     outputs = model(**inputs)
                     logits = outputs[0]
                     loss = F.cross_entropy(logits.view(-1, logits.size(-1)), lm_labels.contiguous().view(-1), ignore_index=-1)
-                if args.model_type == "gpt2":
+                elif args.model_type == "gpt2":
                     results = model(input_ids, labels=lm_labels, input_mask=input_mask)
                     loss, logits, past = results
                 elif args.model_type == "openai-gpt":
@@ -322,10 +324,8 @@ def main():
                     model.train()
     if args.do_eval:
         model.eval()
-        # evaluate
         eval_loss = evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding).item()
         print("\n\nevaluating\neval loss:", eval_loss, "ppl", np.exp(eval_loss) if eval_loss < 300 else np.inf)
-        # test
         test_loss = evaluate(model, test_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding).item()
         print("\n\ntesting\ntest loss:", test_loss, "ppl:", np.exp(test_loss) if test_loss < 300 else np.inf)
 

@@ -18,7 +18,7 @@ from pytorch_transformers import (OpenAIGPTModel, OpenAIGPTTokenizer, SequenceSu
                                      AdamW, cached_path, WEIGHTS_NAME, CONFIG_NAME, WarmupLinearSchedule)
 
 from scripts.train_classifier import (OpenAIGPTCLFModel, pre_process_datasets, evaluate)
-from utils import (load_comet_dataset, save_model, split_into_words, tokenize_and_encode, set_seed, relations)
+from scripts.utils import (load_comet_dataset, save_model, split_into_words, tokenize_and_encode, set_seed, relations)
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
@@ -99,9 +99,9 @@ def main():
 
         # Prepare optimizer
         print("Testing ...")
-        eval_loss, eval_accu = evaluate(model, test_dataloader1, tokenizer, max_e1, max_r, print_wrong=True)
+        eval_loss, eval_accu = evaluate(model, test_dataloader1, tokenizer, max_e1, max_r, print_wrong=False)
         print("dev2: Loss", eval_loss, "accuracy", eval_accu)
-        eval_loss, eval_accu = evaluate(model, test_dataloader2, tokenizer, max_e1, max_r, print_wrong=True)
+        eval_loss, eval_accu = evaluate(model, test_dataloader2, tokenizer, max_e1, max_r, print_wrong=False)
         print("test: Loss", eval_loss, "accuracy", eval_accu)
     
     max_e1 = 10

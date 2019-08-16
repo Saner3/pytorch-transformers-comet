@@ -100,7 +100,7 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')
         logits[indices_to_remove] = filter_value
     return logits
 
-def pre_process_datasets(text_dataset, encoded_dataset, encoded_paddings, input_len, max_e1, max_r, max_e2):
+def pre_process_datasets(encoded_dataset, encoded_paddings, input_len, max_e1, max_r, max_e2):
     padding_lengths = len(encoded_paddings)
     input_len += padding_lengths
 
@@ -126,10 +126,10 @@ def pre_process_datasets(text_dataset, encoded_dataset, encoded_paddings, input_
 
     lm_labels = np.copy(input_ids)
     lm_labels[lm_labels == 0] = -1
-    lm_labels[:, :padding_lengths+max_e1+max_r] = -1
+    lm_labels[:, :padding_lengths + max_e1 + max_r] = -1
     input_mask = torch.FloatTensor(input_ids == 0)
     all_inputs = (input_ids, lm_labels, input_mask)
-    return [torch.tensor(t) for t in all_inputs] + text_dataset
+    return tuple(torch.tensor(t) for t in all_inputs)
 
 
 def sample_sequence(model, max_length, padding_length, tokenizer, batch, max_e1=10, max_r=5, max_e2=16, temperature=1, top_k=0, top_p=0.0, is_xlnet=False, device='cpu', is_greedy=True, eos_token=None):
@@ -163,10 +163,9 @@ def sample_sequence(model, max_length, padding_length, tokenizer, batch, max_e1=
             
             if eos_token and next_token.item() == tokenizer.encode(tokenizer.eos_token)[0]:
                 break
-
-
             if not is_xlnet:
-                input_mask = torch.cat((input_mask, torch.ones(1,1).float().to(device)), dim=-1)
+                input_mask = torch.cat((input_mask, torch.zeros(1,1).float().to(device)), dim=-1)
+
     return generated[:, padding_length:]
 
 
@@ -195,7 +194,6 @@ def main():
 
     args.device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
     args.n_gpu = torch.cuda.device_count()
-
     set_seed(args.seed)
 
     args.model_type = args.model_type.lower()
@@ -215,8 +213,9 @@ def main():
     print(args)
     logger.info("Encoding dataset...")
     end_token = tokenizer.eos_token
-    # Load and encode the datasets
+    print("\nspecial tokens:", tokenizer.special_tokens_map)
 
+    # Load and encode the datasets
     test_dataset = load_comet_dataset(args.test_dataset, end_token, rel_lang=args.rel_lang)
     encoded_dataset = tokenize_and_encode(test_dataset, tokenizer)
     encoded_paddings = tokenize_and_encode(PADDING_TEXT, tokenizer) if args.padding_text else []
@@ -226,7 +225,7 @@ def main():
     max_r = 5
     max_e2 = 15 + 1
     input_length = max_e1 + max_r + max_e2
-    test_tensor_dataset = pre_process_datasets(test_dataset, encoded_dataset, encoded_paddings, input_length, max_e1, max_r, max_e2)
+    test_tensor_dataset = pre_process_datasets(encoded_dataset, encoded_paddings, input_length, max_e1, max_r, max_e2)
     test_data = TensorDataset(*test_tensor_dataset)
     test_sampler = SequentialSampler(test_data)
     test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=args.eval_batch_size)
@@ -234,8 +233,7 @@ def main():
     results = [] 
     logger.setLevel(level=logging.CRITICAL)
     for step, batch in tqdm(enumerate(test_dataloader)):
-        input_ids, labels, masks, texts = batch
-        batch = tuple([input_ids.to(device), labels.to(device), masks.to(device)])
+        batch = tuple([t.to(device) for t in batch])
         out = sample_sequence(
             model=model,
             padding_length=padding_length,
@@ -254,21 +252,18 @@ def main():
             eos_token=end_token
         )
         out = out.tolist()
-        assert(len(out) == len(texts))
         for i, single_out in enumerate(out):
-            # e1 = single_out[:max_e1]
-            # e1 = [word for word in e1 if word > 0]
-            # e1 = tokenizer.decode(e1, clean_up_tokenization_spaces=True)
-            # r = single_out[max_e1:max_e1+max_r]
-            # r =  [word for word in r if word > 0]
-            # r = tokenizer.decode(r, clean_up_tokenization_spaces=True)
-            e1 = texts[i][0]
-            r = texts[i][1]
-            e2_truth = texts[i][2]
+            e1 = single_out[:max_e1]
+            e1 = [word for word in e1 if word > 0]
+            e1 = tokenizer.decode(e1, clean_up_tokenization_spaces=True)
+            r = single_out[max_e1:max_e1+max_r]
+            r =  [word for word in r if word > 0]
+            r = tokenizer.decode(r, clean_up_tokenization_spaces=True)
+            e2_truth = batch[0][i, max_e1 + max_r + padding_length:].tolist()
+            e2_truth = " ".join(tokenizer.decode(e2_truth, clean_up_tokenization_spaces=True, skip_special_tokens=True).split()[:-1])
             e2 = single_out[max_e1+max_r:-1]
             e2 = tokenizer.decode(e2, clean_up_tokenization_spaces=True)
             results.append({'e1': e1, 'r': r, 'sequence': e2, 'reference': e2_truth})
-            print(e1, r, e2, e2_truth)
     output_file = open(args.output_file, "wb")
     pickle.dump(results, output_file)
 

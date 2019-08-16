@@ -32,7 +32,7 @@ split_into_words = {
     'HasPainCharacter': "has pain character",
     'HasPainIntensity': "has pain intensity",
     'HasPrerequisite': "has prequisite",
-    # actually it is "has prerequisite, but models are trained on it ..."
+    # actually it is "has prerequisite, but models were trained on it ..."
     'HasProperty': "has property",
     'HasSubevent': "has subevent",
     'InheritsFrom': "inherits from",
@@ -76,20 +76,20 @@ def load_comet_dataset(dataset_path, end_token, rel_lang=True, toy=False, discar
             f = f[:1000]
         output = []
         for line in tqdm(f):
-            line = line.split("\t")
+            rel, e1, e2, label = line.split("\t")
             try:
-                label = int(line[3]) if not discard_negative else float(line[3])
+                label = int(label) if not discard_negative else float(label)
             except:
                 label = -1
             if discard_negative and label == 0:    # discard negative samples
                 continue
-            line[2] += " " + end_token
+            e2 += (" " + end_token)
             if rel_lang:
-                output.append((line[1], split_into_words[line[0]], line[2], label))
+                output.append((e1, split_into_words[rel], e2, label))
             else:
-                output.append((line[1], line[0].lower(), line[2], label))
-        # print some samples
-        print(output[-1])
+                output.append((e1, rel.lower(), e2, label))
+        # print some samples for debugging
+        print(output[-3:])
     return output
 
 # Save a trained model
