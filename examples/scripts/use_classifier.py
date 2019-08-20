@@ -40,7 +40,6 @@ def main():
     parser.add_argument('--eval_dataset2', type=str, default='data/conceptnet/dev2.txt')
     parser.add_argument('--test_dataset', type=str, default='data/conceptnet/test.txt')
     parser.add_argument('--seed', type=int, default=42)
-    parser.add_argument('--eval_per_steps', type=int, default=500)
     parser.add_argument('--eval_batch_size', type=int, default=16)
 
     args = parser.parse_args()
@@ -117,6 +116,9 @@ def main():
             e2 = input("input a object: ") + " " + tokenizer.eos_token
             if r in relations:
                 r = split_into_words[r]
+                if not r:
+                    print("invalid relation name")
+                    continue
             dataset = [(e1, r, e2, -1)]
             datasets = (dataset,)
             encoded_datasets = tokenize_and_encode(datasets, tokenizer)

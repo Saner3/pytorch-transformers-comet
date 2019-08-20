@@ -18,35 +18,37 @@
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import sys
+sys.path.insert(0, "..")
+from utils import (set_seed, split_into_words,
+                   load_comet_dataset, tokenize_and_encode)
+from pytorch_transformers import TransfoXLLMHeadModel, TransfoXLTokenizer
+from pytorch_transformers import XLNetLMHeadModel, XLNetTokenizer
+from pytorch_transformers import OpenAIGPTLMHeadModel, OpenAIGPTTokenizer
+from pytorch_transformers import GPT2LMHeadModel, GPT2Tokenizer
+from pytorch_transformers import GPT2Config, OpenAIGPTConfig, XLNetConfig, TransfoXLConfig
+from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
+                              TensorDataset)
 import argparse
 import logging
 from tqdm import trange
 
-import pickle, sys
+import pickle
 import torch
 import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm
-sys.path.insert(0, "..")
 
-from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
-                              TensorDataset)
-from pytorch_transformers import GPT2Config, OpenAIGPTConfig, XLNetConfig, TransfoXLConfig
 
-from pytorch_transformers import GPT2LMHeadModel, GPT2Tokenizer
-from pytorch_transformers import OpenAIGPTLMHeadModel, OpenAIGPTTokenizer
-from pytorch_transformers import XLNetLMHeadModel, XLNetTokenizer
-from pytorch_transformers import TransfoXLLMHeadModel, TransfoXLTokenizer
-from utils import (set_seed, split_into_words, load_comet_dataset, tokenize_and_encode)
-
-logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
-                    datefmt = '%m/%d/%Y %H:%M:%S',
-                    level = logging.INFO)
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
+                    datefmt='%m/%d/%Y %H:%M:%S',
+                    level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 MAX_LENGTH = int(10000)  # Hardcoded max length to avoid infinite loop
 
-ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (GPT2Config, OpenAIGPTConfig, XLNetConfig, TransfoXLConfig)), ())
+ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (
+    GPT2Config, OpenAIGPTConfig, XLNetConfig, TransfoXLConfig)), ())
 
 MODEL_CLASSES = {
     'gpt2': (GPT2LMHeadModel, GPT2Tokenizer),
@@ -70,6 +72,7 @@ man is chased outside and beaten. Twenty years later, Rasputin sees a vision of
 the Virgin Mary, prompting him to become a priest. Rasputin quickly becomes famous,
 with people, even a bishop, begging for his blessing. <eod> </s> <eos>"""
 
+
 def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
     """ Filter a distribution of logits using top-k and/or nucleus (top-p) filtering
         Args:
@@ -79,26 +82,30 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')
                 Nucleus filtering is described in Holtzman et al. (http://arxiv.org/abs/1904.09751)
         From: https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
     """
-    #assert logits.dim() == 1  # batch size 1 for now - could be updated for more but the code would be less clear
+    # assert logits.dim() == 1  # batch size 1 for now - could be updated for more but the code would be less clear
     top_k = min(top_k, logits.size(-1))  # Safety check
     if top_k > 0:
         # Remove all tokens with a probability less than the last token of the top-k
-        indices_to_remove = logits < torch.topk(logits, top_k)[0][..., -1, None]
+        indices_to_remove = logits < torch.topk(logits, top_k)[
+            0][..., -1, None]
         logits[indices_to_remove] = filter_value
 
     if top_p > 0.0:
         sorted_logits, sorted_indices = torch.sort(logits, descending=True)
-        cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+        cumulative_probs = torch.cumsum(
+            F.softmax(sorted_logits, dim=-1), dim=-1)
 
         # Remove tokens with cumulative probability above the threshold
         sorted_indices_to_remove = cumulative_probs > top_p
         # Shift the indices to the right to keep also the first token above the threshold
-        sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+        sorted_indices_to_remove[...,
+                                 1:] = sorted_indices_to_remove[..., :-1].clone()
         sorted_indices_to_remove[..., 0] = 0
 
         indices_to_remove = sorted_indices[sorted_indices_to_remove]
         logits[indices_to_remove] = filter_value
     return logits
+
 
 def pre_process_datasets(encoded_dataset, encoded_paddings, input_len, max_e1, max_r, max_e2):
     padding_lengths = len(encoded_paddings)
@@ -135,7 +142,7 @@ def pre_process_datasets(encoded_dataset, encoded_paddings, input_len, max_e1, m
 def sample_sequence(model, max_length, padding_length, tokenizer, batch, max_e1=10, max_r=5, max_e2=16, temperature=1, top_k=0, top_p=0.0, is_xlnet=False, device='cpu', is_greedy=True, eos_token=None):
     context, _, input_mask = batch
     num_samples = context.size(0)
-    assert(num_samples==1)
+    assert(num_samples == 1)
     context = context[:1, :max_e1 + max_r + padding_length]
     input_mask = input_mask[:1, :max_e1 + max_r + padding_length]
     context = torch.tensor(context, dtype=torch.long, device=device)
@@ -145,26 +152,37 @@ def sample_sequence(model, max_length, padding_length, tokenizer, batch, max_e1=
             inputs = {'input_ids': generated, 'input_mask': input_mask}
             if is_xlnet:
                 # add dummy token for prediction
-                input_ids = torch.cat((generated, torch.zeros((1, 1), dtype=torch.long, device=device)), dim=1)
-                input_mask = torch.cat((input_mask, torch.zeros((1, 1), dtype=torch.float, device=device)), dim=1)
-                perm_mask = torch.zeros((1, input_ids.shape[1], input_ids.shape[1]), dtype=torch.float, device=device)
-                perm_mask[:, :, -1] = 1.0  # Previous tokens don't see last token
-                target_mapping = torch.zeros((1, 1, input_ids.shape[1]), dtype=torch.float, device=device)
+                input_ids = torch.cat((generated, torch.zeros(
+                    (1, 1), dtype=torch.long, device=device)), dim=1)
+                input_mask = torch.cat((input_mask, torch.zeros(
+                    (1, 1), dtype=torch.float, device=device)), dim=1)
+                perm_mask = torch.zeros(
+                    (1, input_ids.shape[1], input_ids.shape[1]), dtype=torch.float, device=device)
+                # Previous tokens don't see last token
+                perm_mask[:, :, -1] = 1.0
+                target_mapping = torch.zeros(
+                    (1, 1, input_ids.shape[1]), dtype=torch.float, device=device)
                 target_mapping[0, 0, -1] = 1.0  # predict last token
-                inputs = {'input_ids': input_ids, 'input_mask': input_mask, 'perm_mask': perm_mask, 'target_mapping': target_mapping}
-            outputs = model(**inputs)  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet (cached hidden-states)
+                inputs = {'input_ids': input_ids, 'input_mask': input_mask,
+                          'perm_mask': perm_mask, 'target_mapping': target_mapping}
+            # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet (cached hidden-states)
+            outputs = model(**inputs)
             next_token_logits = outputs[0][0, -1, :] / temperature
-            filtered_logits = top_k_top_p_filtering(next_token_logits, top_k=top_k, top_p=top_p)
+            filtered_logits = top_k_top_p_filtering(
+                next_token_logits, top_k=top_k, top_p=top_p)
             if not is_greedy:
-                next_token = torch.multinomial(F.softmax(filtered_logits, dim=-1), num_samples=1).unsqueeze(0)
+                next_token = torch.multinomial(
+                    F.softmax(filtered_logits, dim=-1), num_samples=1).unsqueeze(0)
             else:
-                next_token = torch.argmax(F.softmax(filtered_logits, dim=-1), dim=-1).unsqueeze(0).unsqueeze(0)
+                next_token = torch.argmax(
+                    F.softmax(filtered_logits, dim=-1), dim=-1).unsqueeze(0).unsqueeze(0)
             generated = torch.cat((generated, next_token), dim=1)
-            
+
             if eos_token and next_token.item() == tokenizer.encode(tokenizer.eos_token)[0]:
                 break
             if not is_xlnet:
-                input_mask = torch.cat((input_mask, torch.zeros(1,1).float().to(device)), dim=-1)
+                input_mask = torch.cat(
+                    (input_mask, torch.zeros(1, 1).float().to(device)), dim=-1)
 
     return generated[:, padding_length:]
 
@@ -178,9 +196,12 @@ def main():
     parser.add_argument("--output_file", default=None, type=str, required=True,
                         help="Output file to store results")
     parser.add_argument("--length", type=int, default=20)
-    parser.add_argument("--is_greedy", action='store_true', help="Use greedy decoding or topk/topp.")
-    parser.add_argument("--padding_text", action='store_true', help="xlnet need padding?")
-    parser.add_argument("--rel_lang", action='store_true', help="Use natural language for relations.")
+    parser.add_argument("--is_greedy", action='store_true',
+                        help="Use greedy decoding or topk/topp.")
+    parser.add_argument("--padding_text", action='store_true',
+                        help="xlnet need padding?")
+    parser.add_argument("--rel_lang", action='store_true',
+                        help="Use natural language for relations.")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--top_k", type=int, default=0)
     parser.add_argument("--top_p", type=float, default=0.0)
@@ -188,11 +209,13 @@ def main():
                         help="Avoid using CUDA when available")
     parser.add_argument('--seed', type=int, default=42,
                         help="random seed for initialization")
-    parser.add_argument('--test_dataset', type=str, default='data/conceptnet/test.txt')
+    parser.add_argument('--test_dataset', type=str,
+                        default='data/conceptnet/test.txt')
     parser.add_argument('--eval_batch_size', type=int, default=1)
     args = parser.parse_args()
 
-    args.device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
+    args.device = torch.device(
+        "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
     args.n_gpu = torch.cuda.device_count()
     set_seed(args.seed)
 
@@ -206,31 +229,37 @@ def main():
     if args.length < 0 and model.config.max_position_embeddings > 0:
         args.length = model.config.max_position_embeddings
     elif 0 < model.config.max_position_embeddings < args.length:
-        args.length = model.config.max_position_embeddings  # No generation bigger than model size 
+        # No generation bigger than model size
+        args.length = model.config.max_position_embeddings
     elif args.length < 0:
         args.length = MAX_LENGTH  # avoid infinite loop
 
     print(args)
     logger.info("Encoding dataset...")
-    end_token = tokenizer.eos_token
+    eos_token = tokenizer.eos_token
+    eos_token_id = tokenizer.encode(eos_token)[0]
     print("\nspecial tokens:", tokenizer.special_tokens_map)
 
     # Load and encode the datasets
-    test_dataset = load_comet_dataset(args.test_dataset, end_token, rel_lang=args.rel_lang)
+    test_dataset = load_comet_dataset(
+        args.test_dataset, eos_token, rel_lang=args.rel_lang)
     encoded_dataset = tokenize_and_encode(test_dataset, tokenizer)
-    encoded_paddings = tokenize_and_encode(PADDING_TEXT, tokenizer) if args.padding_text else []
+    encoded_paddings = tokenize_and_encode(
+        PADDING_TEXT, tokenizer) if args.padding_text else []
     padding_length = len(encoded_paddings)
     print("padding_length:", padding_length)
     max_e1 = 10
     max_r = 5
     max_e2 = 15 + 1
     input_length = max_e1 + max_r + max_e2
-    test_tensor_dataset = pre_process_datasets(encoded_dataset, encoded_paddings, input_length, max_e1, max_r, max_e2)
+    test_tensor_dataset = pre_process_datasets(
+        encoded_dataset, encoded_paddings, input_length, max_e1, max_r, max_e2)
     test_data = TensorDataset(*test_tensor_dataset)
     test_sampler = SequentialSampler(test_data)
-    test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=args.eval_batch_size)
+    test_dataloader = DataLoader(
+        test_data, sampler=test_sampler, batch_size=args.eval_batch_size)
     model.eval()
-    results = [] 
+    results = []
     logger.setLevel(level=logging.CRITICAL)
     for step, batch in tqdm(enumerate(test_dataloader)):
         batch = tuple([t.to(device) for t in batch])
@@ -249,7 +278,7 @@ def main():
             max_e1=max_e1,
             max_r=max_r,
             max_e2=max_e2,
-            eos_token=end_token
+            eos_token=eos_token
         )
         out = out.tolist()
         for i, single_out in enumerate(out):
@@ -257,15 +286,23 @@ def main():
             e1 = [word for word in e1 if word > 0]
             e1 = tokenizer.decode(e1, clean_up_tokenization_spaces=True)
             r = single_out[max_e1:max_e1+max_r]
-            r =  [word for word in r if word > 0]
+            r = [word for word in r if word > 0]
             r = tokenizer.decode(r, clean_up_tokenization_spaces=True)
             e2_truth = batch[0][i, max_e1 + max_r + padding_length:].tolist()
-            e2_truth = " ".join(tokenizer.decode(e2_truth, clean_up_tokenization_spaces=True, skip_special_tokens=True).split()[:-1])
+            try:
+                eos_token_pos = e2_truth.index(eos_token_id)
+                e2_truth = e2_truth[:eos_token_pos]
+            except:
+                pass
+            e2_truth = tokenizer.decode(
+                e2_truth, clean_up_tokenization_spaces=True)
             e2 = single_out[max_e1+max_r:-1]
             e2 = tokenizer.decode(e2, clean_up_tokenization_spaces=True)
-            results.append({'e1': e1, 'r': r, 'sequence': e2, 'reference': e2_truth})
+            results.append(
+                {'e1': e1, 'r': r, 'sequence': e2, 'reference': e2_truth})
     output_file = open(args.output_file, "wb")
     pickle.dump(results, output_file)
+
 
 if __name__ == '__main__':
     main()

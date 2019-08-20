@@ -136,19 +136,21 @@ def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, print_wrong=False
     except:
         eval_loss = 0
         eval_accuracy = 0
-    print(" --------------------------------------------")
-    print("| \\ label |  0  |  1  | Precision | Recall")
+    print(" -----------------------")
+    print("| \\ label |  0  |  1  | ")
     print("|pred\\     ")
-    print("|-----\\-------------------------------------")
+    print("|-----\\----------------")
+    print("| 0 |        ", f_f, t_f)
+    print("| 1 |        ", f_t, t_t)
+    print("|___|___________________")
     try:
-        print("| 0 |        ", f_f, t_f, "   %.3f"%(f_f/(f_f+t_f)), "  %.3f"%(f_f/(f_f+f_t)))
+        precision = t_t/(f_t+t_t)
+        recall = t_t/(t_t+t_f)
+        print("precision: ", precision)
+        print("recall: ", recall)
+        print("F1: ", 2*precision*recall/(precision+recall))
     except:
-        print("| 0 |        ", f_f, t_f)
-    try:
-        print("| 1 |        ", f_t, t_t, "   %.3f"%(t_t/(f_t+t_t)), "  %.3f"%(t_t/(t_t+t_f)))
-    except:
-        print("| 1 |        ", f_t, t_t)
-    print("|___|________________________________________")
+        pass
     return eval_loss, eval_accuracy
 
 def main():

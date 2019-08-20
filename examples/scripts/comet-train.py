@@ -23,6 +23,7 @@ import datetime
 import numpy as np
 import torch
 sys.path.insert(0, "..")
+sys.path.insert(1, ".")
 from pytorch_transformers import (CONFIG_NAME, WEIGHTS_NAME, AdamW,
                                   GPT2LMHeadModel, GPT2Tokenizer, GPT2Config,
                                   XLNetLMHeadModel, XLNetTokenizer, XLNetConfig, 
@@ -30,16 +31,17 @@ from pytorch_transformers import (CONFIG_NAME, WEIGHTS_NAME, AdamW,
                                   WarmupLinearSchedule, cached_path)
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
                               TensorDataset)
-from tqdm import tqdm, trange
+from tqdm import tqdm
 import torch.nn.functional as F
-from scripts.utils import (load_comet_dataset, save_model, tokenize_and_encode, set_seed, PADDING_TEXT)
+from scripts.utils import (load_comet_dataset, save_model, tokenize_and_encode, 
+                            set_seed, PADDING_TEXT)
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
                     level = logging.INFO)
 logger = logging.getLogger(__name__)
 
-def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2, paddings=[]):
+def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2, paddings=[], predict_rel=False):
     tensor_datasets = []
     padding_length = len(paddings)
     input_len += padding_length
@@ -71,8 +73,12 @@ def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2, pad
         lm_labels = np.copy(input_ids)
         # do not calculate loss on paddings
         lm_labels[lm_labels == 0] = -1  
-        # do not calculate loss on e1/r
-        lm_labels[:, :max_e1 + max_r + padding_length] = -1    
+        if not predict_rel:
+            # do not calculate loss on e1/r
+            lm_labels[:, :max_e1 + max_r + padding_length] = -1    
+        else:
+            lm_labels[:, :padding_length + max_e1] = -1
+            lm_labels[:, max_e1 + max_r + padding_length:] = -1
         input_mask = (input_ids == 0)   # attention mask
         all_inputs = (input_ids, lm_labels, input_mask)
         tensor_datasets.append((torch.tensor(input_ids), torch.tensor(lm_labels), 
@@ -81,7 +87,7 @@ def pre_process_datasets(encoded_datasets, input_len, max_e1, max_r, max_e2, pad
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding=[]):
+def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding=[], predict_rel=False):
     model.eval()
     eval_loss = 0
     nb_eval_steps, nb_eval_examples = 0, 0
@@ -99,7 +105,7 @@ def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, enc
             elif args.model_type == "openai-gpt":
                 results = model(input_ids, labels=lm_labels, input_mask=input_mask)
                 loss, logits = results
-            elif args.model_type == "xlnet":
+            elif args.model_type == "xlnet" and not predict_rel:
                 padding_length = len(encoded_padding)
                 seq_length = input_ids.size(1)
                 batch_size = input_ids.size(0)
@@ -111,6 +117,22 @@ def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, enc
                 target_mapping = torch.zeros((batch_size, max_e2, seq_length), dtype=torch.float, device=device)
                 for i in range(max_e2):
                     target_mapping[:, i, start_pos + i] = 1.0
+                inputs = {'input_ids': input_ids, 'input_mask': input_mask, 'perm_mask': perm_mask, 'target_mapping': target_mapping}
+                outputs = model(**inputs)
+                logits = outputs[0]
+                loss = F.cross_entropy(logits.view(-1, logits.size(-1)), lm_labels.contiguous().view(-1), ignore_index=-1)
+            elif args.model_type == "xlnet" and predict_rel:
+                padding_length = len(encoded_padding)
+                seq_length = input_ids.size(1)
+                batch_size = input_ids.size(0)
+                lm_labels = lm_labels[:, max_e1 + padding_length : max_e1 + padding_length + max_r]
+                perm_mask = torch.zeros((batch_size, seq_length, seq_length), dtype=torch.float, device=device)
+                perm_mask[:, :, max_e1 + padding_length : max_e1 + padding_length + max_r] = 1.0
+                perm_mask = torch.triu(perm_mask)
+                perm_mask[:, max_e1 + max_r + padding_length:, max_e1 + padding_length : max_e1 + padding_length + max_r] = 1.0
+                target_mapping = torch.zeros((batch_size, max_r, seq_length), dtype=torch.float, device=device)
+                for i in range(max_r):
+                    target_mapping[:, i, max_e1 + padding_length + i] = 1.0
                 inputs = {'input_ids': input_ids, 'input_mask': input_mask, 'perm_mask': perm_mask, 'target_mapping': target_mapping}
                 outputs = model(**inputs)
                 logits = outputs[0]
@@ -130,9 +152,9 @@ def evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, enc
                     
                 try:
                     eos_pos = output.index(eos_token)
+                    output = tokenizer.decode(output[:eos_pos])
                 except:
-                    eos_pos = -1
-                output = tokenizer.decode(output[:eos_pos])
+                    output = tokenizer.decode(output)
                 print("output:", output)
 
     eval_loss = eval_loss / nb_eval_steps
@@ -146,7 +168,7 @@ def main():
     parser.add_argument("--rel_lang", action='store_true', help="Use natural language to represent relations.")
     parser.add_argument("--do_train", action='store_true', help="do training")
     parser.add_argument("--do_eval", action='store_true', help="do evaluation")
-    parser.add_argument("--predict_relation", action='store_true', help="predict relation rather than objects")
+    parser.add_argument("--predict_rel", action='store_true', help="predict relation rather than objects")
     parser.add_argument("--toy", action='store_true', help="test code")
     parser.add_argument("--padding_text", action='store_true', help="xlnet needs a padding text")
     parser.add_argument("--output_dir", default=None, type=str, required=True,
@@ -218,25 +240,25 @@ def main():
 
     # Load and encode the datasets
     logger.info("Encoding dataset...")
-    train_dataset = load_comet_dataset(args.train_dataset, end_token, rel_lang=args.rel_lang, toy=args.toy)
+    train_dataset = load_comet_dataset(args.train_dataset, end_token, rel_lang=args.rel_lang, toy=args.toy, sep=args.predict_rel)
     if args.eval_dataset:
-        eval_dataset = load_comet_dataset(args.eval_dataset, end_token, rel_lang=args.rel_lang, toy=args.toy)
+        eval_dataset = load_comet_dataset(args.eval_dataset, end_token, rel_lang=args.rel_lang, toy=args.toy, sep=args.predict_rel)
     else:
-        eval_dataset1 = load_comet_dataset(args.eval_dataset1, end_token, rel_lang=args.rel_lang, toy=args.toy)
-        eval_dataset2 = load_comet_dataset(args.eval_dataset2, end_token, rel_lang=args.rel_lang, toy=args.toy)
+        eval_dataset1 = load_comet_dataset(args.eval_dataset1, end_token, rel_lang=args.rel_lang, toy=args.toy, sep=args.predict_rel)
+        eval_dataset2 = load_comet_dataset(args.eval_dataset2, end_token, rel_lang=args.rel_lang, toy=args.toy, sep=args.predict_rel)
         eval_dataset = eval_dataset1 + eval_dataset2
-    test_dataset = load_comet_dataset(args.test_dataset, end_token, rel_lang=args.rel_lang, toy=args.toy)
+    test_dataset = load_comet_dataset(args.test_dataset, end_token, rel_lang=args.rel_lang, toy=args.toy, sep=args.predict_rel)
     datasets = (train_dataset, eval_dataset, test_dataset)
     encoded_datasets = tokenize_and_encode(datasets, tokenizer)
-    max_e1 = 10
-    max_r = 5
+    max_e1 = 10 if not args.predict_rel else (10 + 1)
+    max_r = 5 if not args.predict_rel else (5 + 1)
     max_e2 = 15 + 1
     input_length = max_e1 + max_r + max_e2
     best_loss = 1e10
    
     encoded_padding = tokenize_and_encode(PADDING_TEXT, tokenizer) if args.padding_text else []
     # Prepare inputs tensors and dataloaders
-    tensor_datasets = pre_process_datasets(encoded_datasets, input_length, max_e1, max_r, max_e2, paddings=encoded_padding)
+    tensor_datasets = pre_process_datasets(encoded_datasets, input_length, max_e1, max_r, max_e2, paddings=encoded_padding, predict_rel=args.predict_rel)
     train_tensor_dataset, eval_tensor_dataset, test_tensor_dataset = tensor_datasets[0], tensor_datasets[1], tensor_datasets[2]
 
     train_data = TensorDataset(*train_tensor_dataset)
@@ -273,7 +295,7 @@ def main():
             for step, batch in enumerate(train_dataloader):
                 batch = tuple(t.to(device) for t in batch)
                 input_ids, lm_labels, input_mask = batch
-                if args.model_type == "xlnet":
+                if args.model_type == "xlnet" and not args.predict_rel:
                     padding_length = len(encoded_padding)
                     batch_size = input_ids.size(0)
                     seq_length = input_ids.size(1)
@@ -285,6 +307,22 @@ def main():
                     target_mapping = torch.zeros((batch_size, max_e2, seq_length), dtype=torch.float, device=device)
                     for i in range(max_e2):
                         target_mapping[:, i, start_pos + i] = 1.0
+                    inputs = {'input_ids': input_ids, 'input_mask': input_mask, 'perm_mask': perm_mask, 'target_mapping': target_mapping}
+                    outputs = model(**inputs)
+                    logits = outputs[0]
+                    loss = F.cross_entropy(logits.view(-1, logits.size(-1)), lm_labels.contiguous().view(-1), ignore_index=-1)
+                elif args.model_type == "xlnet" and args.predict_rel:
+                    padding_length = len(encoded_padding)
+                    batch_size = input_ids.size(0)
+                    seq_length = input_ids.size(1)
+                    lm_labels = lm_labels[:, max_e1 + padding_length : max_e1 + padding_length + max_r]
+                    perm_mask = torch.zeros((batch_size, seq_length, seq_length), dtype=torch.float, device=device)
+                    perm_mask[:, :, max_e1 + padding_length : max_e1 + padding_length + max_r] = 1.0
+                    perm_mask = torch.triu(perm_mask)
+                    perm_mask[:, max_e1 + max_r + padding_length:, max_e1 + padding_length : max_e1 + padding_length + max_r] = 1.0
+                    target_mapping = torch.zeros((batch_size, max_r, seq_length), dtype=torch.float, device=device)
+                    for i in range(max_r):
+                        target_mapping[:, i, max_e1 + padding_length + i] = 1.0
                     inputs = {'input_ids': input_ids, 'input_mask': input_mask, 'perm_mask': perm_mask, 'target_mapping': target_mapping}
                     outputs = model(**inputs)
                     logits = outputs[0]
@@ -308,7 +346,7 @@ def main():
                 if nb_tr_steps % args.eval_per_steps == 0:
                     model.eval()
                     # evaluate
-                    eval_loss = evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding).item()
+                    eval_loss = evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding, predict_rel=args.predict_rel).item()
                     print("\n\nevaluating\neval loss:", eval_loss, "ppl", np.exp(eval_loss) if eval_loss < 300 else np.inf)
                     # decide to save
                     if eval_loss < best_loss:
@@ -319,14 +357,14 @@ def main():
                         print("prev loss:", best_loss, "cur loss:", eval_loss)
                         best_loss = eval_loss
                     # test
-                    test_loss = evaluate(model, test_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding).item()
+                    test_loss = evaluate(model, test_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding, predict_rel=args.predict_rel).item()
                     print("\n\ntesting\ntest loss:", test_loss, "ppl:", np.exp(test_loss) if test_loss < 300 else np.inf)
                     model.train()
     if args.do_eval:
         model.eval()
-        eval_loss = evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding).item()
+        eval_loss = evaluate(model, eval_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding, predict_rel=args.predict_rel).item()
         print("\n\nevaluating\neval loss:", eval_loss, "ppl", np.exp(eval_loss) if eval_loss < 300 else np.inf)
-        test_loss = evaluate(model, test_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding).item()
+        test_loss = evaluate(model, test_dataloader, tokenizer, max_e1, max_r, max_e2, args, encoded_padding, predict_rel=args.predict_rel).item()
         print("\n\ntesting\ntest loss:", test_loss, "ppl:", np.exp(test_loss) if test_loss < 300 else np.inf)
 
 
