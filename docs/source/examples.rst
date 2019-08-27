@@ -68,7 +68,9 @@ GLUE results on dev set
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 We get the following results on the dev set of GLUE benchmark with an uncased BERT base
-model. All experiments were run on a P100 GPU with a batch size of 32.
+model (`bert-base-uncased`). All experiments ran on 8 V100 GPUs with a total train batch size of 24. Some of 
+these tasks have a small dataset and training can lead to high variance in the results between different runs.
+We report the median on 5 runs (with different seeds) for each of the metrics.
 
 .. list-table::
    :header-rows: 1
@@ -78,31 +80,31 @@ model. All experiments were run on a P100 GPU with a batch size of 32.
      - Result
    * - CoLA
      - Matthew's corr.
-     - 57.29
+     - 55.75
    * - SST-2
      - accuracy
-     - 93.00
+     - 92.09
    * - MRPC
      - F1/accuracy
-     - 88.85/83.82
+     - 90.48/86.27
    * - STS-B
      - Pearson/Spearman corr.
-     - 89.70/89.37
+     - 89.03/88.64
    * - QQP
      - accuracy/F1
-     - 90.72/87.41
+     - 90.92/87.72
    * - MNLI
      - matched acc./mismatched acc.
-     - 83.95/84.39
+     - 83.74/84.06
    * - QNLI
      - accuracy
-     - 89.04
+     - 91.07
    * - RTE
      - accuracy
-     - 61.01
+     - 68.59
    * - WNLI
      - accuracy
-     - 53.52
+     - 43.66
 
 
 Some of these results are significantly different from the ones reported on the test set
@@ -382,7 +384,7 @@ Training with the previous hyper-parameters on a single GPU gave us the followin
 LM Fine-tuning
 ~~~~~~~~~~~~~~
 
-The data should be a text file in the same format as `sample_text.txt <./samples/sample_text.txt>`_  (one sentence per line, docs separated by empty line).
+The data should be a text file in the same format as `sample_text.txt <./pytorch_transformers/tests/fixtures/sample_text.txt/sample_text.txt>`_  (one sentence per line, docs separated by empty line).
 You can download an `exemplary training corpus <https://ext-bert-sample.obs.eu-de.otc.t-systems.com/small_wiki_sentence_corpus.txt>`_ generated from wikipedia articles and split into ~500k sentences with spaCy.
 Training one epoch on this corpus takes about 1:20h on 4 x NVIDIA Tesla P100 with ``train_batch_size=200`` and ``max_seq_length=128``\ :
 
