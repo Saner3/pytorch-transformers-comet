@@ -576,7 +576,6 @@ class OpenAIGPTLMHeadModel(OpenAIGPTPreTrainedModel):
         super(OpenAIGPTLMHeadModel, self).__init__(config)
         self.transformer = OpenAIGPTModel(config)
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
-
         self.apply(self.init_weights)
         self.tie_weights()
 

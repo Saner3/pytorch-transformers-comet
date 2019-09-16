@@ -108,27 +108,5 @@ def main():
     max_e2 = 15 + 1
     input_length = max_e1 + max_r + max_e2
 
-    if args.interactive:
-        while(True):
-            print("input a tuple")
-            e1 = input("input a subject: ")
-            r = input("input a relation: ")
-            e2 = input("input a object: ") + " " + tokenizer.eos_token
-            if r in relations:
-                r = split_into_words[r]
-                if not r:
-                    print("invalid relation name")
-                    continue
-            dataset = [(e1, r, e2, -1)]
-            datasets = (dataset,)
-            encoded_datasets = tokenize_and_encode(datasets, tokenizer)
-            tensor_dataset = pre_process_datasets(encoded_datasets, input_length, max_e1, max_r, max_e2)[0]
-            tensor_dataset = [t.to(device) for t in tensor_dataset]
-            input_ids, label, input_mask, mc_token_ids = tensor_dataset
-            logits = model(input_ids, mc_token_ids=mc_token_ids, input_mask=input_mask)
-            predict = logits.argmax(-1)
-            print(e1, r, e2)
-            print("predict:", predict.item())
-
 if __name__ == '__main__':
     main()

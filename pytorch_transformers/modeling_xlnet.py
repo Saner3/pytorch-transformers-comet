@@ -1038,10 +1038,8 @@ class XLNetLMHeadModel(XLNetPreTrainedModel):
         super(XLNetLMHeadModel, self).__init__(config)
         self.attn_type = config.attn_type
         self.same_length = config.same_length
-
         self.transformer = XLNetModel(config)
         self.lm_loss = nn.Linear(config.d_model, config.n_token, bias=True)
-
         self.apply(self.init_weights)
         self.tie_weights()
 

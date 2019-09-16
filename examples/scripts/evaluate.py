@@ -9,12 +9,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 parser = argparse.ArgumentParser()
 parser.add_argument("--print_negative", action='store_true', help="print those triples that are considered negative by the scorer.")
 parser.add_argument("--calc_similarity", action='store_true', help="compare the novelty.")
+parser.add_argument("--rel_match", action='store_true', help="compare if the rel matches")
 parser.add_argument("--input_file", type=str, required=True, help="generation results file")
 args = parser.parse_args()
 
 pkl_file = open(args.input_file, 'rb')
-train_set = open("data/conceptnet/train100k.txt", "r")
-test_set = open("data/conceptnet/test.txt", "r")
+train_set = open("data/conceptnet/train100k_CN.txt", "r")
+test_set = open("data/conceptnet/test_CN.txt", "r")
 
 train_set = train_set.read().splitlines()
 test_set = test_set.read().splitlines()
@@ -69,16 +70,19 @@ print("The Scorer does not support those relations:\n", " ".join( ['HasPainChara
 'NotHasA','NotIsA','NotHasProperty','NotCapableOf']))
 print("\nPairs that are considered incorrect:\n")
 
+match_rel = 0
 for pair in data:
     e1 = pair['e1']
     e2 = pair['sequence']
-    e2_ref = pair['reference']
+    ref = pair['reference']
     try:
         results = scorer.gen_score(e1, e2)
     except:
         print("error:", pair)
         exit()
-    rel = "".join(pair['r'].split())    # lower, no space,
+    rel = "".join(pair['r'].lower().split())    # lower, no space,
+    if args.rel_match and rel == "".join(ref.lower().split()):
+        match_rel += 1
     # COMET code mis-spells "hasprerequisite"
     if rel == "hasprequisite":
         rel = "hasprerequisite"
@@ -87,9 +91,9 @@ for pair in data:
     if args.calc_similarity:
         if (e1, rel) in test_sr.keys():
             test_sr[(e1, rel)][1].append(e2)
-            test_sr[(e1, rel)][0].append(e2_ref)
+            test_sr[(e1, rel)][0].append(ref)
         else:
-            test_sr[(e1, rel)] = [[e2_ref], [e2]]
+            test_sr[(e1, rel)] = [[ref], [e2]]
 
     if thispair not in train_triples:
         novelsro += 1
@@ -155,8 +159,9 @@ print("score", positive_prediction / valid_data_num)
 print("N/Tsro", novelsro / total_data_num)
 print("N/To", novelo / total_data_num)
 print("N/Tsr", novelsr / total_data_num)
+if args.rel_match:
+    print("match rels:", match_rel / total_data_num)
 if args.calc_similarity:
     print("similarities with train set:", np.mean(similarity_with_train_set))
     print("similarities with ground truth:", np.mean(similarity_with_test_set))
 pkl_file.close()
-

@@ -292,54 +292,51 @@ split_into_words = {
     "/film/director/film": "directs"
 }
 
-PADDING_TEXT = """ In 1991, the remains of Russian Tsar Nicholas II and his family
-(except for Alexei and Maria) are discovered.
-The voice of Nicholas's young son, Tsarevich Alexei Nikolaevich, narrates the
-remainder of the story. <eod> </s> <eos>
-1883 Western Siberia,
-a young Grigori Rasputin is asked by his father and a group of men to perform magic.
-Rasputin has a vision and denounces one of the men as a horse thief. Although his
-father initially slaps him for making such an accusation, Rasputin watches as the
-man is chased outside and beaten. Twenty years later, Rasputin sees a vision of
-the Virgin Mary, prompting him to become a priest. Rasputin quickly becomes famous,
-with people, even a bishop, begging for his blessing. <eod> </s> <eos>"""
-
-
-def load_comet_dataset(dataset_path, end_token, rel_lang=True, toy=False, discard_negative=True, sep=False):
-    if not end_token:
+def load_comet_dataset(dataset_path=None, 
+                        eos_token=None, 
+                        sep_token=None, 
+                        rel_lang=True, 
+                        toy=False, 
+                        discard_negative=True, 
+                        sep=False, 
+                        add_sep=False, 
+                        prefix=None):
+    if not eos_token:
         end_token = ""
     with open(dataset_path, encoding='utf_8') as f:
         f = f.read().splitlines()
         if toy:
+            random.shuffle(f)
             f = f[:1000]
         output = []
         for line in tqdm(f):
             rel, e1, e2, label = line.split("\t")
-            try:
-                label = int(label) if not discard_negative else float(label)
-            except:
-                label = -1
-            if discard_negative and label == 0:    # discard negative samples
+            if discard_negative and label == "0": 
                 continue
-            if sep:
-                e1 += (" " + end_token)
-            e2 += (" " + end_token)
+            if not discard_negative:
+                # convert to int, to avoid being encoded
+                try:
+                    label = int(label)
+                except:
+                    # in ConceptNet training data the label is float
+                    label = -1
+            if add_sep:
+                e1 += (" " + sep_token)
+            if prefix:
+                e1 = prefix + " " + e1
+            e2 += (" " + eos_token)
             if rel_lang:
                 rel = split_into_words[rel]
                 if not rel:
                     continue
-                if sep:
-                    rel += (" " + end_token)
-                output.append((e1, rel, e2, label))
             else:
-                if sep:
-                    rel += (" " + end_token) 
-                output.append((e1, rel.lower(), e2, label))
-        # print some samples for debugging
+                rel = rel.lower()
+            if add_sep:
+                rel += (" " + sep_token)
+            output.append((e1, rel, e2, label))
+        # print some samples for sure
         print(output[-3:])
     return output
-
-# Save a trained model
 
 
 def save_model(model, tokenizer, output_dir):
@@ -354,8 +351,6 @@ def save_model(model, tokenizer, output_dir):
     model_to_save.config.to_json_file(output_config_file)
     # tokenizer.save_vocabulary(output_dir)
     tokenizer.save_pretrained(output_dir)
-
-# Load and encode the datasets
 
 
 def tokenize_and_encode(obj, tokenizer):

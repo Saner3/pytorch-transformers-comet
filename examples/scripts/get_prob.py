@@ -20,6 +20,8 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import argparse
 import logging
+import sys
+sys.path.insert(0, "..")
 from tqdm import trange
 
 import torch
@@ -126,7 +128,7 @@ def main():
     args.model_type = args.model_type.lower()
     model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
     tokenizer = tokenizer_class.from_pretrained(args.model_name_or_path)
-    print(tokenizer.eos_token)                                  
+    print("eos_token:", tokenizer.eos_token)                                  
     model = model_class.from_pretrained(args.model_name_or_path)
     model.to(args.device)
     model.eval()
