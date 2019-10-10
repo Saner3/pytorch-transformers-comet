@@ -214,10 +214,11 @@ def main():
     tokenizer = Tokenizer.from_pretrained(args.model_name_or_path)
     model = Model.from_pretrained(args.model_name_or_path)
     print("\nspecial tokens:", tokenizer.special_tokens_map)
-    if not tokenizer.eos_token:
-        tokenizer.add_special_tokens({"eos_token": "<eos>"})
-    if not tokenizer.sep_token:
-        tokenizer.add_special_tokens({"sep_token": "<sep>"})
+    if args.do_train:
+        if not tokenizer.eos_token:
+            tokenizer.add_special_tokens({"eos_token": "<eos>"})
+        # if not tokenizer.sep_token:
+        #     tokenizer.add_special_tokens({"sep_token": "<sep>"})
 
     print("vocab size:", len(tokenizer))
 
